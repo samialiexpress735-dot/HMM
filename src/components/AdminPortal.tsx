@@ -139,42 +139,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setTimeout(() => setSuccessBanner(''), 5000);
   };
 
-  // Supabase Modals and Diagnostics State
+  // Unified School Supabase Configuration State
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [showSupabaseSettings, setShowSupabaseSettings] = useState(false);
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseCredentials());
   const [supabaseStatus, setSupabaseStatus] = useState(getSupabaseStatus());
-  const [isPushingAll, setIsPushingAll] = useState(false);
-  const [cloudSyncError, setCloudSyncError] = useState<string | null>(null);
 
   const handleSaveSupabaseConfig = (e: React.FormEvent) => {
     e.preventDefault();
     setSupabaseCredentials(supabaseConfig.url, supabaseConfig.key);
     setSupabaseStatus(getSupabaseStatus());
     setShowSupabaseSettings(false);
-    setSuccessBanner('✓ Supabase credentials saved & client reconnected!');
+    setSuccessBanner('✓ Supabase connection updated and saved!');
     setTimeout(() => setSuccessBanner(''), 5000);
-  };
-
-  const handlePushAllToCloud = async () => {
-    setIsPushingAll(true);
-    setCloudSyncError(null);
-    try {
-      const result = await syncAllTeachersToCloud(teachers);
-      if (result.successCount > 0 && result.failCount === 0) {
-        setSuccessBanner(`✓ All ${result.successCount} teachers successfully synced to Supabase database!`);
-        setTimeout(() => setSuccessBanner(''), 6000);
-      } else if (result.successCount > 0 && result.failCount > 0) {
-        setSuccessBanner(`✓ Synced ${result.successCount} teachers to Supabase. ${result.failCount} failed.`);
-        setCloudSyncError(result.errors.join(' | '));
-      } else {
-        setCloudSyncError(result.errors[0] || 'Failed to sync teachers to Supabase.');
-      }
-    } catch (e: any) {
-      setCloudSyncError(e.message || 'Error pushing teachers to Supabase');
-    } finally {
-      setIsPushingAll(false);
-    }
   };
 
   // Add Teacher Handler with real Supabase Cloud Sync
@@ -207,14 +184,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     const savedToCloud = await syncTeacherToCloud(newTeacher);
 
     if (savedToCloud.success) {
-      setCloudSyncError(null);
       setSuccessBanner(
-        `✓ Teacher "${teacherName}" registered & saved to Supabase "teachers" table! Temporary password: ${generatedPass}`
+        `✓ Teacher "${teacherName}" registered and saved directly to your Supabase database! Temporary password: ${generatedPass}`
       );
     } else {
-      setCloudSyncError(savedToCloud.error || 'Failed to sync with Supabase');
       setSuccessBanner(
-        `✓ Teacher "${teacherName}" added to faculty list. (Supabase cloud sync notice below)`
+        `✓ Teacher "${teacherName}" registered. Note: ${savedToCloud.error}`
       );
     }
     setTeacherName('');
@@ -439,60 +414,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       )}
 
-      {/* Cloud Sync Alert Banner */}
-      {cloudSyncError && (
-        <div className="p-4 rounded-2xl bg-[#faf5f1] border-2 border-amber-400 text-[#3b241a] text-xs shadow-sm space-y-2.5 animate-in fade-in">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1 space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-extrabold text-[#2e1c14] text-sm flex items-center gap-2">
-                  <span>Supabase Database Write Alert</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-200 text-amber-900 uppercase">
-                    Action Required in Supabase
-                  </span>
-                </span>
-                <span className="text-[11px] text-[#754c39]">
-                  {supabaseStatus.isConfigured ? '🟢 Connected to Cloud' : '⚠️ Client offline'}
-                </span>
-              </div>
-              <p className="text-[12px] text-[#5d3b2c] leading-relaxed">
-                The teacher was added to your local session, but could not be saved to your remote Supabase <code className="bg-amber-100 px-1 py-0.5 rounded text-[#2e1c14] font-bold">teachers</code> table.
-              </p>
-              <div className="p-2.5 rounded-xl bg-white border border-amber-300 font-mono text-[11px] text-amber-950 overflow-x-auto">
-                {cloudSyncError}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowSqlModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-[#4a2e22] hover:bg-[#352016] text-[#f7d6a5] font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
-                >
-                  <Database className="w-3.5 h-3.5 text-[#c68a4c]" />
-                  <span>View & Copy SQL Fix Script (Run in Supabase)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePushAllToCloud}
-                  disabled={isPushingAll}
-                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-amber-50 border border-amber-400 text-[#4a2e22] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <UploadCloud className="w-3.5 h-3.5 text-amber-600" />
-                  <span>{isPushingAll ? 'Pushing All to Supabase...' : 'Retry Push All Teachers to Cloud'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSupabaseSettings(true)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Supabase URL & Key Settings</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TAB 1: STAFF PROVISIONING (TEACHERS & SUB-ADMINS) */}
       {activeAdminTab === 'staff' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -695,18 +616,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     Credential status, assigned sections, and temporary passcodes
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <button
-                    type="button"
-                    onClick={handlePushAllToCloud}
-                    disabled={isPushingAll || teachers.length === 0}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#352016] hover:bg-[#20130d] text-[#f7d6a5] transition-colors cursor-pointer disabled:opacity-50"
-                    title="Push all registered teachers in this browser to Supabase PostgreSQL"
-                  >
-                    <UploadCloud className="w-3 h-3 text-[#c68a4c]" />
-                    <span>{isPushingAll ? 'Pushing...' : 'Push All to Supabase'}</span>
-                  </button>
-
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={async () => {
@@ -714,46 +624,26 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                         const live = await fetchTeachersFromCloud();
                         if (live && live.length > 0) {
                           live.forEach((t) => onAddTeacher(t));
-                          setSuccessBanner(`✓ Retrieved ${live.length} live teachers from Supabase database!`);
+                          setSuccessBanner(`✓ Refreshed ${live.length} live teachers from your Supabase database!`);
                           setTimeout(() => setSuccessBanner(''), 5000);
                         } else {
                           setSuccessBanner('Supabase database currently has 0 teachers stored.');
                           setTimeout(() => setSuccessBanner(''), 4000);
                         }
                       } catch (e: any) {
-                        setSuccessBanner(`Error fetching teachers: ${e.message}`);
+                        setSuccessBanner(`Error loading teachers: ${e.message}`);
                       }
                     }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#f3e8df] hover:bg-[#ebd3c4] text-[#6d3e23] border border-[#ebd3c4] transition-colors cursor-pointer"
-                    title="Fetch and sync all teachers from Supabase"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#f3e8df] hover:bg-[#ebd3c4] text-[#6d3e23] border border-[#ebd3c4] transition-colors cursor-pointer"
+                    title="Refresh teachers directly from Supabase"
                   >
-                    <RefreshCw className="w-3 h-3 text-[#6d3e23]" />
-                    <span>Sync Supabase</span>
+                    <RefreshCw className="w-3.5 h-3.5 text-[#6d3e23]" />
+                    <span>Refresh from Database</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowSqlModal(true)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#faf5f1] hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors cursor-pointer"
-                    title="View and copy the SQL script to fix permissions in Supabase"
-                  >
-                    <Database className="w-3 h-3 text-amber-600" />
-                    <span>SQL Fix</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowSupabaseSettings(true)}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black cursor-pointer ${
-                      supabaseStatus.isConfigured
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-amber-100 text-amber-900 border border-amber-300'
-                    }`}
-                    title="Click to check or update Supabase connection settings"
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${supabaseStatus.isConfigured ? 'bg-emerald-600' : 'bg-amber-600 animate-ping'}`} />
-                    <span>{supabaseStatus.isConfigured ? 'DB Live' : 'Connect DB'}</span>
-                  </button>
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full">
+                    Debre Berhan Campus
+                  </span>
                 </div>
               </div>
 
