@@ -10,24 +10,24 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   return (
-    <footer className="bg-slate-950 text-slate-400 text-xs border-t border-slate-800 mt-16 print:hidden">
+    <footer className="bg-[#1a0e08] text-[#d4ab94] text-xs border-t border-[#3b241a] mt-16 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Col 1: Identity & Motto */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-amber-500 p-0.5 shadow-md flex items-center justify-center">
-                <span className="font-serif font-black text-slate-950 text-xs">HMM</span>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3b241a] to-[#c68a4c] p-0.5 shadow-md flex items-center justify-center">
+                <span className="font-serif font-black text-[#1f140e] text-xs">HMM</span>
               </div>
               <div>
                 <h3 className="font-bold text-white text-sm">Hailemariam Mamo</h3>
-                <p className="text-[11px] text-emerald-400">Secondary & Preparatory School</p>
+                <p className="text-[11px] text-[#e8b982]">Secondary & Preparatory School</p>
               </div>
             </div>
-            <p className="text-[11px] leading-relaxed text-slate-400">
+            <p className="text-[11px] leading-relaxed text-[#d4ab94]">
               ደብረ ብርሃን ኃይለማሪያም ማሞ አጠቃላይ ሁለተኛ እና መሰናዶ ትምህርት ቤት • Serving Grades 9 to 12 in North Shewa Zone, Amhara Region, Ethiopia.
             </p>
-            <div className="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px]">
+            <div className="flex items-center gap-1.5 text-[#e8b982] font-semibold text-[11px]">
               <Shield className="w-3.5 h-3.5" />
               <span>&quot;Excellence in Character & Knowledge&quot;</span>
             </div>

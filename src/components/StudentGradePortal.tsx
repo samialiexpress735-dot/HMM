@@ -51,14 +51,14 @@ export const StudentGradePortal: React.FC<StudentGradePortalProps> = ({ students
 
   const activeStudent = students.find((s) => s.id === selectedStudentId) || students[0];
   const activeSemesterData =
-    activeStudent?.semesters.find((sem) => sem.semester === selectedSemester) ||
-    activeStudent?.semesters[0];
+    activeStudent?.semesters?.find((sem) => sem.semester === selectedSemester) ||
+    activeStudent?.semesters?.[0];
 
   const evaluatedSubjects = activeSemesterData
     ? activeSemesterData.subjects.map(evaluateSubjectGrade)
     : [];
 
-  const semesterSummary = activeSemesterData
+  const semesterSummary = activeSemesterData && activeStudent
     ? evaluateSemesterPerformance(activeSemesterData.subjects, activeStudent.grade)
     : null;
 
@@ -67,6 +67,29 @@ export const StudentGradePortal: React.FC<StudentGradePortalProps> = ({ students
   const currentNonFinal = (simSubject?.continuousAssessment || 0) + (simSubject?.midExam || 0);
   const requiredFinal = Math.max(0, targetScore - currentNonFinal);
   const isTargetFeasible = requiredFinal <= 50;
+
+  if (!activeStudent || students.length === 0) {
+    return (
+      <div className="bg-white rounded-3xl border border-[#ebd3c4] p-12 text-center space-y-4 max-w-xl mx-auto shadow-sm my-8">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#faf5f1] border border-[#d4ab94] text-[#4a2e22] flex items-center justify-center font-bold">
+          <Award className="w-8 h-8 text-[#c68a4c]" />
+        </div>
+        <h3 className="text-xl font-extrabold text-[#2e1c14]">
+          {lang === 'am' ? 'የተማሪዎች ውጤት መከታተያ ፖርታል' : 'Student & Parent Academic Portal'}
+        </h3>
+        <p className="text-xs text-[#754c39] leading-relaxed">
+          {lang === 'am'
+            ? 'በአሁኑ ሰዓት በሲስተሙ የተመዘገቡ ተማሪዎች የሉም። የትምህርት ቤቱ አድሚኒስትሬተር ተማሪዎችን ሲያስመዘግብና መምህራን ማርክ ሲሞሉ የተረጋገጠ የውጤት ካርድ እዚህ ይታያል።'
+            : 'No student grade transcripts are currently published. As soon as students are enrolled by the registrar and teachers submit assessments, official report cards and mark slips will appear here.'}
+        </p>
+        <div className="pt-2">
+          <span className="text-[11px] font-bold text-[#4a2e22] bg-[#f5e8e0] px-3 py-1 rounded-full border border-[#ebd3c4]">
+            Official Grading Protocol (MoE Standard)
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
@@ -154,15 +177,13 @@ export const StudentGradePortal: React.FC<StudentGradePortalProps> = ({ students
 
       {/* Active Student Profile Banner */}
       {activeStudent && (
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white rounded-2xl shadow-md p-6 border border-slate-700/60">
+        <div className="bg-gradient-to-r from-[#20130d] via-[#352016] to-[#20130d] text-white rounded-3xl shadow-lg p-6 border border-[#5d3b2c]">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            {/* Student photo & identity */}
+            {/* Student initials & identity */}
             <div className="flex items-center space-x-4">
-              <img
-                src={activeStudent.avatar}
-                alt={activeStudent.fullName}
-                className="w-20 h-20 rounded-2xl object-cover border-2 border-amber-400 shadow-md"
-              />
+              <div className="avatar-monogram w-18 h-18 rounded-2xl text-xl font-black border-2 border-[#c68a4c] shadow-md flex-shrink-0">
+                {activeStudent.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('') || 'ST'}
+              </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-xl font-bold tracking-tight text-white">{activeStudent.fullName}</h3>

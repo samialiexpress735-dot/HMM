@@ -75,9 +75,9 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
   const totalStudents = sections.reduce((acc, s) => acc + s.totalStudents, 0);
   const totalMale = sections.reduce((acc, s) => acc + s.maleStudents, 0);
   const totalFemale = sections.reduce((acc, s) => acc + s.femaleStudents, 0);
-  const avgAttendance = (
-    sections.reduce((acc, s) => acc + s.attendanceToday, 0) / sections.length
-  ).toFixed(1);
+  const avgAttendance = sections.length > 0
+    ? (sections.reduce((acc, s) => acc + s.attendanceToday, 0) / sections.length).toFixed(1)
+    : '0.0';
 
   // Filtered sections
   const filteredSections = sections.filter((s) => {
@@ -413,7 +413,22 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
 
       {/* FULL-WIDTH SECTIONS LIST (1 section per row, full wide as requested) */}
       <div className="flex flex-col gap-6 w-full">
-        {filteredSections.map((sec) => {
+        {filteredSections.length === 0 ? (
+          <div className="bg-white rounded-3xl border border-[#ebd3c4] p-12 text-center space-y-4 shadow-sm">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-[#faf5f1] border border-[#d4ab94] text-[#4a2e22] flex items-center justify-center font-bold">
+              <Layers className="w-7 h-7 text-[#c68a4c]" />
+            </div>
+            <div className="font-extrabold text-[#2e1c14] text-base">
+              {lang === 'am' ? 'ምንም ክፍሎች (Sections) አልተፈጠሩም' : 'No Sections Created for This Academic Year Yet'}
+            </div>
+            <p className="text-xs text-[#754c39] max-w-md mx-auto leading-relaxed">
+              {lang === 'am'
+                ? 'በሬጅስትራር ዴስክ የተማሪዎች ክፍፍል (Section Allocator) በመጠቀም ክፍሎችን በዘፈቀደ ወይም በፆታ ማመጣጠን ይችላሉ።'
+                : 'Open the Registrar Portal and use the Section Allocator to distribute enrolled students into balanced Grade sections (A, B, C...) with assigned subjects.'}
+            </p>
+          </div>
+        ) : (
+          filteredSections.map((sec) => {
           const malePct = Math.round((sec.maleStudents / sec.totalStudents) * 100);
           const femalePct = 100 - malePct;
           const sectionStudents = getStudentsForSection(sec);
@@ -513,11 +528,9 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <img
-                        src={sec.homeroomTeacher.avatar}
-                        alt={sec.homeroomTeacher.name}
-                        className="w-12 h-12 rounded-xl object-cover border border-emerald-300 flex-shrink-0 shadow-xs"
-                      />
+                      <div className="avatar-monogram w-12 h-12 rounded-2xl flex-shrink-0 text-xs font-black shadow-xs">
+                        {sec.homeroomTeacher.name.split(' ').map((n) => n[0]).slice(0, 2).join('') || 'HT'}
+                      </div>
                       <div className="min-w-0 flex-1 text-xs">
                         <div className="font-bold text-slate-900 text-sm truncate">
                           {lang === 'am' ? sec.homeroomTeacher.nameAmharic : sec.homeroomTeacher.name}
@@ -674,7 +687,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
 
       {/* MODAL 1: Reassign Homeroom Teacher Modal */}

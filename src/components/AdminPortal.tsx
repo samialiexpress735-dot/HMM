@@ -72,29 +72,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [subAdminRoleTitle, setSubAdminRoleTitle] = useState('Registrar Officer (የሬጅስትራር ሃላፊ)');
   const [subAdminPhone, setSubAdminPhone] = useState('+251 92 ');
 
-  // Sub-admins list state
-  const [subAdmins, setSubAdmins] = useState([
-    {
-      id: 'sub-1',
-      name: 'Ato Mengistu Haile',
-      role: 'Registrar & Records Officer',
-      roleAmharic: 'ዋና ሬጅስትራር',
-      phone: '+251 91 188 4400',
-      email: 'registrar@hailemariammamo.edu.et',
-      passcode: 'reg2017!',
-      status: 'Active'
-    },
-    {
-      id: 'sub-2',
-      name: 'W/ro Genet Zeleke',
-      role: 'Vice Principal (Academics)',
-      roleAmharic: 'ምክትል ርዕሰ-መምህር',
-      phone: '+251 92 344 1122',
-      email: 'academics@hailemariammamo.edu.et',
-      passcode: 'vp2017!',
-      status: 'Active'
+  // Sub-admins list state - initialized empty as requested
+  const [subAdmins, setSubAdmins] = useState<any[]>(() => {
+    try {
+      const s = localStorage.getItem('hmm_subadmins');
+      return s ? JSON.parse(s) : [];
+    } catch {
+      return [];
     }
-  ]);
+  });
 
   // Copy helper
   const handleCopy = (text: string, id: string) => {
@@ -549,93 +535,110 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   Subject Teachers ({teachers.length})
                 </div>
 
-                {teachers.map((t) => {
-                  const staffPass = generateStaffPassword('Teacher', t.name.split(' ')[0]);
-                  return (
-                    <div
-                      key={t.id}
-                      className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:bg-slate-100/70 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <img
-                          src={t.avatar}
-                          alt=""
-                          className="w-10 h-10 rounded-xl object-cover border border-slate-300 flex-shrink-0"
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900">{t.name}</span>
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">
-                              {t.subject}
+                {teachers.length === 0 ? (
+                  <div className="p-6 text-center rounded-2xl border-2 border-dashed border-[#d4ab94]/60 bg-[#faf5f1]/60 space-y-2">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-[#ebd3c4] text-[#4a2e22] flex items-center justify-center font-bold">
+                      <UserPlus className="w-5 h-5 text-[#4a2e22]" />
+                    </div>
+                    <div className="font-extrabold text-[#2e1c14] text-xs">No Teachers Registered Yet</div>
+                    <p className="text-[11px] text-[#754c39] max-w-sm mx-auto leading-relaxed">
+                      Use the form on the left to register your faculty members. Each teacher will receive their verified login credentials here.
+                    </p>
+                  </div>
+                ) : (
+                  teachers.map((t) => {
+                    const staffPass = generateStaffPassword('Teacher', t.name.split(' ')[0]);
+                    const initials = t.name.split(' ').map((n) => n[0]).slice(0, 2).join('');
+                    return (
+                      <div
+                        key={t.id}
+                        className="p-4 rounded-2xl bg-white border border-[#ebd3c4] hover:bg-[#faf5f1] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="avatar-monogram w-10 h-10 rounded-xl flex-shrink-0 text-xs font-black">
+                            {initials || 'TR'}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-[#2e1c14]">{t.name}</span>
+                              <span className="text-[10px] bg-[#ebd3c4] text-[#3b241a] font-bold px-2 py-0.5 rounded">
+                                {t.subject}
+                              </span>
+                            </div>
+                            <span className="text-[#754c39] block text-[11px]">{t.email}</span>
+                            <span className="text-[#5d3b2c] font-mono text-[11px]">
+                              Classes: <strong className="text-[#2e1c14]">{t.sectionsTeaching?.join(', ') || 'Unassigned'}</strong>
                             </span>
                           </div>
-                          <span className="text-slate-500 block text-[11px]">{t.email}</span>
-                          <span className="text-slate-600 font-mono text-[11px]">
-                            Classes: <strong className="text-slate-900">{t.sectionsTeaching?.join(', ') || '9A'}</strong>
-                          </span>
                         </div>
-                      </div>
 
-                      <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
-                        <div className="p-2 bg-white rounded-lg border border-slate-200 font-mono text-[11px] text-slate-700">
-                          Password: <strong className="text-emerald-900">{staffPass}</strong>
-                        </div>
-                        <button
-                          onClick={() => handleCopy(`${t.email} / ${staffPass}`, t.id)}
-                          className="p-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-slate-700 transition-colors cursor-pointer"
-                          title="Copy login credentials"
-                        >
-                          {copiedId === t.id ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                        {onQuickTeacherLogin && (
+                        <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+                          <div className="p-2 bg-[#faf5f1] rounded-lg border border-[#ebd3c4] font-mono text-[11px] text-[#4a2e22]">
+                            Password: <strong className="text-[#2e1c14] font-black">{staffPass}</strong>
+                          </div>
                           <button
-                            onClick={() => onQuickTeacherLogin(t)}
-                            className="btn-animated px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                            title="Directly switch to Teacher Suite logged in as this educator"
+                            onClick={() => handleCopy(`${t.email} / ${staffPass}`, t.id)}
+                            className="p-2 bg-[#ebd3c4]/70 hover:bg-[#ebd3c4] rounded-lg text-[#3b241a] transition-colors cursor-pointer"
+                            title="Copy login credentials"
                           >
-                            <LogIn className="w-3 h-3 text-amber-300" />
-                            <span>Sign in</span>
+                            {copiedId === t.id ? <Check className="w-3.5 h-3.5 text-[#2e1c14]" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
-                        )}
+                          {onQuickTeacherLogin && (
+                            <button
+                              onClick={() => onQuickTeacherLogin(t)}
+                              className="btn-animated px-2.5 py-1.5 bg-[#4a2e22] hover:bg-[#352016] text-[#f7d6a5] font-bold rounded-lg text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              title="Directly switch to Teacher Suite logged in as this educator"
+                            >
+                              <LogIn className="w-3 h-3 text-[#c68a4c]" />
+                              <span>Sign in</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
 
                 {/* Sub-Admins List */}
                 <div className="pt-4 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Sub-Administrators ({subAdmins.length})
                 </div>
 
-                {subAdmins.map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">{sub.name}</span>
-                        <span className="text-[10px] bg-amber-200 text-slate-950 font-bold px-2 py-0.5 rounded">
-                          {sub.role}
-                        </span>
-                      </div>
-                      <span className="text-slate-500 block text-[11px]">{sub.email} • {sub.phone}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-end sm:self-center">
-                      <div className="p-2 bg-white rounded-lg border border-slate-200 font-mono text-[11px] text-slate-700">
-                        Pass: <strong className="text-slate-900">{sub.passcode}</strong>
-                      </div>
-                      <button
-                        onClick={() => handleCopy(`${sub.email} / ${sub.passcode}`, sub.id)}
-                        className="p-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-slate-700 transition-colors cursor-pointer"
-                        title="Copy login credentials"
-                      >
-                        {copiedId === sub.id ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
+                {subAdmins.length === 0 ? (
+                  <div className="p-4 text-center rounded-2xl border border-dashed border-[#d4ab94]/60 bg-[#faf5f1]/40 text-[11px] text-[#754c39]">
+                    No administrative officers registered yet. Use the sub-admin form on the left to assign registrar or dean roles.
                   </div>
-                ))}
+                ) : (
+                  subAdmins.map((sub) => (
+                    <div
+                      key={sub.id}
+                      className="p-4 rounded-2xl bg-[#faf5f1] border border-[#ebd3c4] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-[#2e1c14]">{sub.name}</span>
+                          <span className="text-[10px] bg-[#ebd3c4] text-[#3b241a] font-bold px-2 py-0.5 rounded">
+                            {sub.role}
+                          </span>
+                        </div>
+                        <span className="text-[#754c39] block text-[11px]">{sub.email} • {sub.phone}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end sm:self-center">
+                        <div className="p-2 bg-white rounded-lg border border-[#ebd3c4] font-mono text-[11px] text-[#4a2e22]">
+                          Pass: <strong className="text-[#2e1c14]">{sub.passcode}</strong>
+                        </div>
+                        <button
+                          onClick={() => handleCopy(`${sub.email} / ${sub.passcode}`, sub.id)}
+                          className="p-2 bg-[#ebd3c4]/70 hover:bg-[#ebd3c4] rounded-lg text-[#3b241a] transition-colors cursor-pointer"
+                          title="Copy login credentials"
+                        >
+                          {copiedId === sub.id ? <Check className="w-3.5 h-3.5 text-[#2e1c14]" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

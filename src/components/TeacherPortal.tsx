@@ -574,45 +574,57 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
-                {filteredStudents.map((student, idx) => {
-                  const sem1 = student.semesters[0];
-                  const subj = sem1?.subjects.find(
-                    (s) =>
-                      s.subjectId === selectedSubjectId ||
-                      (selectedSubjectId === 'it' && s.subjectId === 'ict') ||
-                      (selectedSubjectId === 'ict' && s.subjectId === 'it')
-                  ) || {
-                    continuousAssessment: 20,
-                    midExam: 15,
-                    finalExam: 35
-                  };
+                {filteredStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-500">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-[#ebd3c4] text-[#4a2e22] flex items-center justify-center font-bold mb-3">
+                        <Users className="w-6 h-6 text-[#4a2e22]" />
+                      </div>
+                      <div className="font-extrabold text-[#2e1c14] text-sm">No Students Registered in Section {selectedSection} Yet</div>
+                      <p className="text-xs text-[#754c39] mt-1">
+                        Enroll students or allocate sections in the Registrar Portal to populate this roster.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStudents.map((student, idx) => {
+                    const sem1 = student.semesters?.[0];
+                    const subj = sem1?.subjects?.find(
+                      (s) =>
+                        s.subjectId === selectedSubjectId ||
+                        (selectedSubjectId === 'it' && s.subjectId === 'ict') ||
+                        (selectedSubjectId === 'ict' && s.subjectId === 'it')
+                    ) || {
+                      continuousAssessment: 20,
+                      midExam: 15,
+                      finalExam: 35
+                    };
 
-                  const total = calculateTotalScore(
-                    subj.continuousAssessment,
-                    subj.midExam,
-                    subj.finalExam
-                  );
-                  const { letter, remarks } = getEthiopianLetterGrade(total);
-                  const isPassing = total >= 50;
+                    const total = calculateTotalScore(
+                      subj.continuousAssessment,
+                      subj.midExam,
+                      subj.finalExam
+                    );
+                    const { letter, remarks } = getEthiopianLetterGrade(total);
+                    const isPassing = total >= 50;
+                    const initials = student.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('');
 
-                  return (
-                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-3 text-center font-mono text-slate-500">{idx + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={student.avatar}
-                            alt=""
-                            className="w-8 h-8 rounded-lg object-cover border border-slate-200 flex-shrink-0"
-                          />
-                          <div>
-                            <span className="font-bold text-slate-900 block leading-tight">
-                              {student.fullName}
-                            </span>
-                            <span className="text-[11px] text-slate-500 font-mono">
-                              {student.studentId} • {student.fullNameAmharic}
-                            </span>
-                          </div>
+                    return (
+                      <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-3 text-center font-mono text-slate-500">{idx + 1}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="avatar-monogram w-8 h-8 rounded-lg flex-shrink-0 text-[11px] font-black">
+                              {initials || 'ST'}
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-900 block leading-tight">
+                                {student.fullName}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-mono">
+                                {student.studentId} • {student.fullNameAmharic}
+                              </span>
+                            </div>
                         </div>
                       </td>
 
@@ -710,7 +722,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           ) : (
@@ -727,28 +739,40 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
-                {filteredStudents.map((student, idx) => {
-                  const currentStatus = student.attendanceStatus || 'Present';
-                  return (
-                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 px-3 text-center font-mono text-slate-500">{idx + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={student.avatar}
-                            alt=""
-                            className="w-8 h-8 rounded-lg object-cover border border-slate-200 flex-shrink-0"
-                          />
-                          <div>
-                            <span className="font-bold text-slate-900 block leading-tight">
-                              {student.fullName}
-                            </span>
-                            <span className="text-[11px] text-slate-500 font-mono">
-                              {student.studentId} • {student.fullNameAmharic}
-                            </span>
+                {filteredStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-500">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-[#ebd3c4] text-[#4a2e22] flex items-center justify-center font-bold mb-3">
+                        <Users className="w-6 h-6 text-[#4a2e22]" />
+                      </div>
+                      <div className="font-extrabold text-[#2e1c14] text-sm">No Students Registered in Section {selectedSection} Yet</div>
+                      <p className="text-xs text-[#754c39] mt-1">
+                        Use the Registrar Section Allocator to distribute enrolled students into sections.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStudents.map((student, idx) => {
+                    const currentStatus = student.attendanceStatus || 'Present';
+                    const initials = student.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('');
+                    return (
+                      <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-3 text-center font-mono text-slate-500">{idx + 1}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="avatar-monogram w-8 h-8 rounded-lg flex-shrink-0 text-[11px] font-black">
+                              {initials || 'ST'}
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-900 block leading-tight">
+                                {student.fullName}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-mono">
+                                {student.studentId} • {student.fullNameAmharic}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
                       <td className="py-3 px-3 text-center font-mono font-bold text-emerald-700">
                         {student.attendanceRate}%
@@ -819,7 +843,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           )}

@@ -954,25 +954,34 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
 
               {/* Registered List */}
               <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-                {registeredStudents.filter((s) => s.targetGrade === targetGrade).map((st, idx) => (
-                  <div
-                    key={st.id}
-                    className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs hover:bg-emerald-50/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={st.avatar}
-                        alt={st.fullName}
-                        className="w-9 h-9 rounded-xl object-cover border border-slate-300 flex-shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-extrabold text-slate-900 truncate">
-                          {idx + 1}. {st.fullName}
-                        </div>
-                        <div className="text-[10px] text-slate-500 truncate flex flex-wrap items-center gap-1.5 mt-0.5">
-                          <span className="font-mono">{st.studentId}</span>
-                          <span>•</span>
-                          <span>Score: {st.previousAverageScore}%</span>
+                {registeredStudents.filter((s) => s.targetGrade === targetGrade).length === 0 ? (
+                  <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                    <UserPlus className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-700">No Grade {targetGrade} Students Enrolled Yet</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Use the intake form on the left or select a 2018 E.C. candidate above to enroll the first applicant.
+                    </p>
+                  </div>
+                ) : (
+                  registeredStudents.filter((s) => s.targetGrade === targetGrade).map((st, idx) => {
+                    const initials = st.fullName.split(' ').map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'ST';
+                    return (
+                      <div
+                        key={st.id}
+                        className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs hover:bg-emerald-50/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#352016] to-[#6d3e23] text-[#e8b982] flex items-center justify-center font-black text-xs border border-[#c68a4c]/40 flex-shrink-0 shadow-2xs">
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-slate-900 truncate">
+                              {idx + 1}. {st.fullName}
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate flex flex-wrap items-center gap-1.5 mt-0.5">
+                              <span className="font-mono">{st.studentId}</span>
+                              <span>•</span>
+                              <span>Score: {st.previousAverageScore}%</span>
                           <span>•</span>
                           <span>{st.gender === 'F' ? 'Female' : 'Male'}</span>
                           {st.stream && (
@@ -1010,7 +1019,8 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
                       )}
                     </div>
                   </div>
-                ))}
+                );
+              }))}
               </div>
             </div>
           </div>

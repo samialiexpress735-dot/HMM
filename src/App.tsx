@@ -34,21 +34,92 @@ import {
 export default function App() {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [teacherUser, setTeacherUser] = useState<Teacher | null>(null);
-  const [isVisitorPreview, setIsVisitorPreview] = useState<boolean>(false);
+  const [isVisitorPreview, setIsVisitorPreview] = useState<boolean>(true); // Default to open public site
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState<boolean>(false);
-  const [currentTab, setCurrentTab] = useState<string>('admin');
   const [lang, setLang] = useState<'en' | 'am'>('en');
+
+  // Multi-Site / Vercel Portal Mode ('public' = Student/Parent & School Site; 'admin' = Administration & Faculty Suite)
+  const [portalMode, setPortalMode] = useState<'public' | 'admin'>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlPortal = params.get('portal');
+      if (urlPortal === 'admin' || urlPortal === 'public') return urlPortal;
+
+      const envMode = (import.meta as any).env?.VITE_PORTAL_MODE;
+      if (envMode === 'admin' || envMode === 'public') return envMode;
+
+      const saved = localStorage.getItem('hmm_portal_mode');
+      if (saved === 'admin' || saved === 'public') return saved;
+    } catch {
+      // fallback
+    }
+    return 'public';
+  });
+
+  const [currentTab, setCurrentTab] = useState<string>(portalMode === 'admin' ? 'admin' : 'home');
 
   // Active section & subject for teacher suite navigation
   const [activeTeacherSection, setActiveTeacherSection] = useState<string>('9A');
   const [activeTeacherSubject, setActiveTeacherSubject] = useState<string>('math');
 
-  // Application Data States
-  const [students, setStudents] = useState<Student[]>(SEED_STUDENTS);
-  const [teachers, setTeachers] = useState<Teacher[]>(TEACHERS);
-  const [sections, setSections] = useState<GradeSection[]>(INITIAL_GRADE_SECTIONS);
-  const [events, setEvents] = useState<SchoolEvent[]>(SCHOOL_EVENTS);
+  // Application Data States (initialized empty or from localStorage for user additions)
+  const [students, setStudents] = useState<Student[]>(() => {
+    try {
+      const saved = localStorage.getItem('hmm_persisted_students');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return SEED_STUDENTS;
+  });
+
+  const [teachers, setTeachers] = useState<Teacher[]>(() => {
+    try {
+      const saved = localStorage.getItem('hmm_persisted_teachers');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return TEACHERS;
+  });
+
+  const [sections, setSections] = useState<GradeSection[]>(() => {
+    try {
+      const saved = localStorage.getItem('hmm_persisted_sections');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_GRADE_SECTIONS;
+  });
+
+  const [events] = useState<SchoolEvent[]>(SCHOOL_EVENTS);
   const [threads, setThreads] = useState<MessageThread[]>(INITIAL_MESSAGES);
+
+  // Sync state changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('hmm_persisted_students', JSON.stringify(students));
+    } catch {
+      // ignore
+    }
+  }, [students]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hmm_persisted_teachers', JSON.stringify(teachers));
+    } catch {
+      // ignore
+    }
+  }, [teachers]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hmm_persisted_sections', JSON.stringify(sections));
+    } catch {
+      // ignore
+    }
+  }, [sections]);
 
   // Check stored admin/teacher session or URL tab parameter on initial load
   useEffect(() => {
@@ -71,13 +142,26 @@ export default function App() {
     const tabParam = params.get('tab');
     if (tabParam && ['home', 'teacher', 'admin', 'grades', 'registrar', 'portal', 'calendar', 'messaging', 'esslce', 'about'].includes(tabParam)) {
       setCurrentTab(tabParam);
-      setIsVisitorPreview(true);
     }
   }, []);
 
+  const handleTogglePortalMode = () => {
+    const nextMode = portalMode === 'public' ? 'admin' : 'public';
+    setPortalMode(nextMode);
+    try {
+      localStorage.setItem('hmm_portal_mode', nextMode);
+    } catch {
+      // ignore
+    }
+    if (nextMode === 'admin') {
+      setCurrentTab(adminUser ? 'admin' : 'admin');
+    } else {
+      setCurrentTab('home');
+    }
+  };
+
   const handleAdminAuthenticated = (admin: AdminUser) => {
     setAdminUser(admin);
-    setIsVisitorPreview(true);
     setCurrentTab('admin');
   };
 
@@ -88,14 +172,16 @@ export default function App() {
       // ignore
     }
     setAdminUser(null);
-    setIsVisitorPreview(true);
-    setCurrentTab('home');
+    if (portalMode === 'admin') {
+      setCurrentTab('admin');
+    } else {
+      setCurrentTab('home');
+    }
   };
 
   // 1-Click Teacher Login Handler
   const handleSelectTeacher = (teacher: Teacher) => {
     setTeacherUser(teacher);
-    setIsVisitorPreview(true); // Allow teacher to view the application without admin modal blocking
     setCurrentTab('teacher');
 
     // Auto-select their subject if recognized
@@ -145,24 +231,8 @@ export default function App() {
     setCurrentTab('teacher');
   };
 
-  // If user is not logged in as Admin, not logged in as Teacher, and hasn't explicitly entered preview mode,
-  // display the Admin Signup / Onboarding page as the primary entrance.
-  if (!adminUser && !teacherUser && !isVisitorPreview) {
-    return (
-      <AdminSignupPage
-        onAdminAuthenticated={handleAdminAuthenticated}
-        onPreviewPublicSite={() => {
-          setIsVisitorPreview(true);
-          setCurrentTab('home');
-        }}
-        lang={lang}
-        setLang={setLang}
-      />
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans selection:bg-emerald-600 selection:text-white w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#fbf9f6] text-[#20130d] flex flex-col font-sans selection:bg-[#6d3e23] selection:text-white w-full max-w-full overflow-x-hidden">
       {/* Navigation Bar with Ethiopian MoE Brand, Language Switcher, Admin & Teacher Status */}
       <Navbar
         currentTab={currentTab}
@@ -177,7 +247,8 @@ export default function App() {
         teacherUser={teacherUser}
         onSignOutTeacher={handleSignOutTeacher}
         onOpenTeacherLogin={() => setIsTeacherModalOpen(true)}
-        unreadCount={threads.filter((t) => !t.resolved).length}
+        portalMode={portalMode}
+        onTogglePortalMode={handleTogglePortalMode}
       />
 
       {/* Main Content Area */}
@@ -198,7 +269,10 @@ export default function App() {
           ) : (
             <AdminSignupPage
               onAdminAuthenticated={handleAdminAuthenticated}
-              onPreviewPublicSite={() => setCurrentTab('home')}
+              onPreviewPublicSite={() => {
+                setPortalMode('public');
+                setCurrentTab('home');
+              }}
               lang={lang}
               setLang={setLang}
             />
