@@ -126,3 +126,90 @@ export function filterCredentialsForSection(
     return false;
   });
 }
+
+export interface AdminUser {
+  fullName: string;
+  fullNameAmharic?: string;
+  email: string;
+  phone: string;
+  roleTitle: string;
+  adminId: string;
+  dateRegistered: string;
+  password?: string;
+}
+
+export const DEFAULT_SCHOOL_ADMIN: AdminUser = {
+  fullName: 'Berhanu Wolde Mengesha, M.Ed.',
+  fullNameAmharic: 'ብርሃኑ ወልደ መንገሻ',
+  email: 'director@hailemariammamo.edu.et',
+  phone: '+251 91 142 5566',
+  roleTitle: 'Principal & School Director',
+  adminId: 'DIR-HMM-001',
+  dateRegistered: '2024-09-01'
+};
+
+/**
+ * Strictly verifies admin login credentials against default accounts or registered local credentials
+ */
+export function verifyAdminCredentials(
+  identifier: string,
+  pass: string,
+  storedAdmin?: (AdminUser & { password?: string }) | null
+): { success: boolean; admin?: AdminUser; error?: string } {
+  const id = identifier.trim().toLowerCase();
+  const rawPass = pass.trim();
+
+  if (!id || !rawPass) {
+    return { success: false, error: 'Please enter both administrator username/email and password.' };
+  }
+
+  // 1. Check default director credentials
+  const isDefaultAdminId =
+    id === 'admin' ||
+    id === 'director@hailemariammamo.edu.et' ||
+    id === 'dir-hmm-001' ||
+    id === 'berhanu';
+  const isDefaultAdminPass = rawPass === 'debberhan2017';
+
+  if (isDefaultAdminId && isDefaultAdminPass) {
+    const active = storedAdmin && (storedAdmin.email === 'director@hailemariammamo.edu.et' || storedAdmin.adminId === 'DIR-HMM-001')
+      ? storedAdmin
+      : DEFAULT_SCHOOL_ADMIN;
+    return { success: true, admin: active };
+  }
+
+  // 2. Check custom registered administrator
+  if (storedAdmin) {
+    const matchesStoredId =
+      storedAdmin.email.toLowerCase() === id ||
+      storedAdmin.adminId.toLowerCase() === id ||
+      (storedAdmin.phone && storedAdmin.phone.replace(/\s+/g, '') === id.replace(/\s+/g, ''));
+
+    const matchesStoredPass =
+      storedAdmin.password === rawPass ||
+      (storedAdmin.password === undefined && rawPass === 'debberhan2017');
+
+    if (matchesStoredId && matchesStoredPass) {
+      return { success: true, admin: storedAdmin };
+    }
+  }
+
+  // 3. Check official sub-admin registrar credentials
+  if ((id === 'registrar' || id === 'registrar@hailemariammamo.edu.et') && rawPass === 'reg2017!') {
+    const registrarAdmin: AdminUser = {
+      fullName: 'Mengistu Haile',
+      fullNameAmharic: 'መንግስቱ ኃይሌ',
+      email: 'registrar@hailemariammamo.edu.et',
+      phone: '+251 91 188 4400',
+      roleTitle: 'Senior Registrar & SIS Officer',
+      adminId: 'REG-HMM-101',
+      dateRegistered: '2024-09-01'
+    };
+    return { success: true, admin: registrarAdmin };
+  }
+
+  return {
+    success: false,
+    error: 'Invalid administrator credentials. Access denied. Please enter the correct email/username and password.'
+  };
+}

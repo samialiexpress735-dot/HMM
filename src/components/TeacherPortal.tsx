@@ -73,7 +73,11 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
       else if (subj.includes('geo')) setSelectedSubjectId('geo');
       else if (subj.includes('hist')) setSelectedSubjectId('hist');
       else if (subj.includes('civ')) setSelectedSubjectId('civ');
-      else if (subj.includes('ict') || subj.includes('inf')) setSelectedSubjectId('ict');
+      else if (subj.includes('ict') || subj.includes('inf') || subj.includes('it')) setSelectedSubjectId('it');
+      else if (subj.includes('pe') || subj.includes('sport') || subj.includes('physical')) setSelectedSubjectId('pe');
+      else if (subj.includes('econ')) setSelectedSubjectId('econ');
+      else if (subj.includes('agri')) setSelectedSubjectId('agri');
+      else if (subj.includes('cte') || subj.includes('career') || subj.includes('tech')) setSelectedSubjectId('cte');
     }
   }, [activeTeacherUser]);
 
@@ -95,6 +99,25 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
       s.fullNameAmharic.includes(searchQuery)
   );
 
+  // Subject display dictionary
+  const SUBJECT_DICTIONARY: Record<string, { en: string; am: string }> = {
+    math: { en: 'Mathematics', am: 'ሒሳብ' },
+    phys: { en: 'Physics', am: 'ፊዚክስ' },
+    chem: { en: 'Chemistry', am: 'ኬሚስትሪ' },
+    bio: { en: 'Biology', am: 'ባዮሎጂ' },
+    eng: { en: 'English Language', am: 'እንግሊዝኛ' },
+    amh: { en: 'Amharic Language', am: 'አማርኛ' },
+    geo: { en: 'Geography', am: 'ጂኦግራፊ' },
+    hist: { en: 'History', am: 'ታሪክ' },
+    civ: { en: 'Citizenship Education', am: 'ስነ-ዜጋ' },
+    it: { en: 'Information Technology (IT)', am: 'ኢንፎርሜሽን ቴክኖሎጂ' },
+    ict: { en: 'Information Technology (IT)', am: 'ኢንፎርሜሽን ቴክኖሎጂ' },
+    pe: { en: 'Physical Education (P.E.)', am: 'ስፖርት' },
+    econ: { en: 'Economics', am: 'ኢኮኖሚክስ' },
+    agri: { en: 'Agriculture', am: 'ግብርና' },
+    cte: { en: 'Career & Technical Education (CTE)', am: 'የስራና ቴክኒክ' }
+  };
+
   // Mark edit handler
   const handleMarkChange = (
     studentId: string,
@@ -105,13 +128,44 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
       if (s.id !== studentId) return s;
       const semesters = s.semesters.map((sem) => {
         if (sem.semester !== 1) return sem;
-        const subjects = sem.subjects.map((subj) => {
-          if (subj.subjectId !== selectedSubjectId) return subj;
-          return {
-            ...subj,
-            [field]: value
+        const exists = sem.subjects.some(
+          (sub) =>
+            sub.subjectId === selectedSubjectId ||
+            (selectedSubjectId === 'it' && sub.subjectId === 'ict') ||
+            (selectedSubjectId === 'ict' && sub.subjectId === 'it')
+        );
+
+        let subjects;
+        if (exists) {
+          subjects = sem.subjects.map((subj) => {
+            if (
+              subj.subjectId !== selectedSubjectId &&
+              !(selectedSubjectId === 'it' && subj.subjectId === 'ict') &&
+              !(selectedSubjectId === 'ict' && subj.subjectId === 'it')
+            ) {
+              return subj;
+            }
+            return {
+              ...subj,
+              [field]: value
+            };
+          });
+        } else {
+          const dict = SUBJECT_DICTIONARY[selectedSubjectId] || {
+            en: selectedSubjectId.toUpperCase(),
+            am: selectedSubjectId.toUpperCase()
           };
-        });
+          const newSubjectEntry = {
+            subjectId: selectedSubjectId,
+            subjectName: dict.en,
+            subjectAmharic: dict.am,
+            teacherName: activeTeacher?.name || 'Assigned Teacher',
+            continuousAssessment: field === 'continuousAssessment' ? value : 22,
+            midExam: field === 'midExam' ? value : 16,
+            finalExam: field === 'finalExam' ? value : 40
+          };
+          subjects = [...sem.subjects, newSubjectEntry];
+        }
         return { ...sem, subjects };
       });
       return { ...s, semesters };
@@ -158,7 +212,12 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
   // Analytics for the selected section & subject
   const marksList = sectionStudents.map((s) => {
     const sem1 = s.semesters[0];
-    const subj = sem1?.subjects.find((sub) => sub.subjectId === selectedSubjectId);
+    const subj = sem1?.subjects.find(
+      (sub) =>
+        sub.subjectId === selectedSubjectId ||
+        (selectedSubjectId === 'it' && sub.subjectId === 'ict') ||
+        (selectedSubjectId === 'ict' && sub.subjectId === 'it')
+    );
     return subj
       ? calculateTotalScore(subj.continuousAssessment, subj.midExam, subj.finalExam)
       : 0;
@@ -295,11 +354,15 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               <option value="chem">Chemistry (ኬሚስትሪ)</option>
               <option value="bio">Biology (ባዮሎጂ)</option>
               <option value="eng">English Language (እንግሊዝኛ)</option>
-              <option value="amh">Amharic Literature (አማርኛ)</option>
+              <option value="amh">Amharic Language (አማርኛ)</option>
               <option value="geo">Geography (ጂኦግራፊ)</option>
               <option value="hist">History (ታሪክ)</option>
-              <option value="civ">Civics & Ethics (ስነ-ዜጋ)</option>
-              <option value="ict">Information Tech (ICT)</option>
+              <option value="civ">Citizenship Education (ስነ-ዜጋ)</option>
+              <option value="it">Information Tech / IT (ኢንፎርሜሽን ቴክኖሎጂ)</option>
+              <option value="pe">Physical Education (P.E. / ስፖርት)</option>
+              <option value="econ">Economics (ኢኮኖሚክስ)</option>
+              <option value="agri">Agriculture (ግብርና)</option>
+              <option value="cte">Career & Technical Education (CTE / የስራና ቴክኒክ)</option>
             </select>
           </div>
 
@@ -513,7 +576,12 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {filteredStudents.map((student, idx) => {
                   const sem1 = student.semesters[0];
-                  const subj = sem1?.subjects.find((s) => s.subjectId === selectedSubjectId) || {
+                  const subj = sem1?.subjects.find(
+                    (s) =>
+                      s.subjectId === selectedSubjectId ||
+                      (selectedSubjectId === 'it' && s.subjectId === 'ict') ||
+                      (selectedSubjectId === 'ict' && s.subjectId === 'it')
+                  ) || {
                     continuousAssessment: 20,
                     midExam: 15,
                     finalExam: 35

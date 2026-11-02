@@ -110,18 +110,21 @@ const grade9SubjectsTemplate = (marks: {
   geo: [number, number, number];
   hist: [number, number, number];
   civ: [number, number, number];
-  ict: [number, number, number];
+  ict?: [number, number, number];
+  pe?: [number, number, number];
+  econ?: [number, number, number];
 }) => [
+  { subjectId: 'eng', subjectName: 'English Language', subjectAmharic: 'እንግሊዝኛ', teacherName: 'Ato Tesfaye Mengistu', continuousAssessment: marks.eng[0], midExam: marks.eng[1], finalExam: marks.eng[2] },
   { subjectId: 'math', subjectName: 'Mathematics', subjectAmharic: 'ሒሳብ', teacherName: 'Ato Daniel Girma', continuousAssessment: marks.math[0], midExam: marks.math[1], finalExam: marks.math[2] },
   { subjectId: 'phys', subjectName: 'Physics', subjectAmharic: 'ፊዚክስ', teacherName: 'W/ro Almaz Kebede', continuousAssessment: marks.phys[0], midExam: marks.phys[1], finalExam: marks.phys[2] },
   { subjectId: 'chem', subjectName: 'Chemistry', subjectAmharic: 'ኬሚስትሪ', teacherName: 'Ato Birhanu Ayele', continuousAssessment: marks.chem[0], midExam: marks.chem[1], finalExam: marks.chem[2] },
   { subjectId: 'bio', subjectName: 'Biology', subjectAmharic: 'ባዮሎጂ', teacherName: 'W/ro Tigist Hailu', continuousAssessment: marks.bio[0], midExam: marks.bio[1], finalExam: marks.bio[2] },
-  { subjectId: 'eng', subjectName: 'English Language', subjectAmharic: 'እንግሊዝኛ', teacherName: 'Ato Tesfaye Mengistu', continuousAssessment: marks.eng[0], midExam: marks.eng[1], finalExam: marks.eng[2] },
-  { subjectId: 'amh', subjectName: 'Amharic Literature', subjectAmharic: 'አማርኛ', teacherName: 'W/ro Aster Molla', continuousAssessment: marks.amh[0], midExam: marks.amh[1], finalExam: marks.amh[2] },
   { subjectId: 'geo', subjectName: 'Geography', subjectAmharic: 'ጂኦግራፊ', teacherName: 'W/ro Genet Abebe', continuousAssessment: marks.geo[0], midExam: marks.geo[1], finalExam: marks.geo[2] },
   { subjectId: 'hist', subjectName: 'History', subjectAmharic: 'ታሪክ', teacherName: 'Ato Solomon Kassa', continuousAssessment: marks.hist[0], midExam: marks.hist[1], finalExam: marks.hist[2] },
-  { subjectId: 'civ', subjectName: 'Civics & Ethics', subjectAmharic: 'ስነ-ዜጋ', teacherName: 'Ato Solomon Kassa', continuousAssessment: marks.civ[0], midExam: marks.civ[1], finalExam: marks.civ[2] },
-  { subjectId: 'ict', subjectName: 'Information Tech (ICT)', subjectAmharic: 'ኢንፎርሜሽን ቴክኖሎጂ', teacherName: 'Ato Robel Tilahun', continuousAssessment: marks.ict[0], midExam: marks.ict[1], finalExam: marks.ict[2] },
+  { subjectId: 'pe', subjectName: 'Physical Education (P.E.)', subjectAmharic: 'ስፖርት', teacherName: 'Ato Yared Kassahun', continuousAssessment: marks.pe?.[0] ?? 28, midExam: marks.pe?.[1] ?? 18, finalExam: marks.pe?.[2] ?? 46 },
+  { subjectId: 'civ', subjectName: 'Citizenship Education', subjectAmharic: 'ስነ-ዜጋ', teacherName: 'Ato Solomon Kassa', continuousAssessment: marks.civ[0], midExam: marks.civ[1], finalExam: marks.civ[2] },
+  { subjectId: 'amh', subjectName: 'Amharic Language', subjectAmharic: 'አማርኛ', teacherName: 'W/ro Aster Molla', continuousAssessment: marks.amh[0], midExam: marks.amh[1], finalExam: marks.amh[2] },
+  { subjectId: 'econ', subjectName: 'Economics', subjectAmharic: 'ኢኮኖሚክስ', teacherName: 'Ato Muluneh Desta', continuousAssessment: marks.econ?.[0] ?? 27, midExam: marks.econ?.[1] ?? 17, finalExam: marks.econ?.[2] ?? 44 },
 ];
 
 export const SEED_STUDENTS: Student[] = [
@@ -736,14 +739,59 @@ export const TEACHERS: Teacher[] = [
     nameAmharic: 'አቶ ሙሉነህ ደስታ',
     department: 'Social Sciences',
     subject: 'Economics',
-    gradesTeaching: [11, 12],
-    sectionsTeaching: ['11B', '12B'],
+    gradesTeaching: [9, 10, 11, 12],
+    sectionsTeaching: ['9A', '10A', '11B', '12B'],
     email: 'muluneh.desta@hailemariammamo.edu.et',
     phone: '+251 91 433 9922',
     qualification: 'M.Sc. in Development Economics',
     avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80',
     isOnline: true,
     officeHours: 'Thursday: 10:00 AM - 12:00 PM'
+  },
+  {
+    id: 't-pe',
+    name: 'Ato Yared Kassahun',
+    nameAmharic: 'አቶ ያሬድ ካሳሁን',
+    department: 'Health & Physical Education',
+    subject: 'Physical Education (P.E.)',
+    gradesTeaching: [9, 10],
+    sectionsTeaching: ['9A', '9B', '10A'],
+    email: 'yared.k@hailemariammamo.edu.et',
+    phone: '+251 91 199 4433',
+    qualification: 'B.Sc. in Sports Science & Physical Education',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    isOnline: true,
+    officeHours: 'Mon & Wed: 4:00 PM - 5:30 PM (School Sports Ground)'
+  },
+  {
+    id: 't-agri',
+    name: 'W/ro Selamawit Bekele',
+    nameAmharic: 'ወ/ሮ ሰላማዊት በቀለ',
+    department: 'Agricultural Sciences',
+    subject: 'Agriculture',
+    gradesTeaching: [11, 12],
+    sectionsTeaching: ['11-Nat-A', '12-Nat-A'],
+    email: 'selamawit.b@hailemariammamo.edu.et',
+    phone: '+251 91 222 8899',
+    qualification: 'M.Sc. in Agronomy & Crop Science (Haramaya University)',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
+    isOnline: true,
+    officeHours: 'Tue & Thu: 2:00 PM - 4:00 PM (Agriculture Field Station)'
+  },
+  {
+    id: 't-cte',
+    name: 'Ato Ermias Haile',
+    nameAmharic: 'አቶ ኤርሚያስ ኃይሌ',
+    department: 'Career & Technical Education (CTE)',
+    subject: 'Career & Technical Education (CTE)',
+    gradesTeaching: [11, 12],
+    sectionsTeaching: ['11-Nat-A', '11-Soc-A', '12-Nat-A'],
+    email: 'ermias.h@hailemariammamo.edu.et',
+    phone: '+251 91 333 7711',
+    qualification: 'B.Tech in Technical & Vocational Education (CTE)',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    isOnline: true,
+    officeHours: 'Mon - Fri: CTE Workshop & Computing Studio'
   }
 ];
 
@@ -1014,37 +1062,53 @@ export interface GradeSection {
 }
 
 
+export const CTE_SPECIALIZATION_OPTIONS = [
+  { id: 'web-dev', labelEn: 'Web Design and Development', labelAm: 'ድረ-ገጽ ንድፍና ልማት', code: 'WD' },
+  { id: 'marketing', labelEn: 'Marketing', labelAm: 'ማርኬቲንግ', code: 'MKT' },
+  { id: 'accounting', labelEn: 'Accounting', labelAm: 'አካውንቲንግ', code: 'ACC' },
+  { id: 'construction', labelEn: 'Construction', labelAm: 'ኮንስትራክሽን', code: 'CST' }
+] as const;
+
+export type CTESpecialization = typeof CTE_SPECIALIZATION_OPTIONS[number]['labelEn'];
+
+// Grade 9 & 10 (11 Subjects): English, Math, Physics, Chemistry, Biology, Geography, History, PE, Citizenship, Amharic, Economics
 export const STANDARD_GRADE_9_10_SUBJECTS: SectionSubjectAssignment[] = [
-  { subjectId: 'math', subjectName: 'Mathematics', subjectAmharic: 'ሒሳብ', teacherId: 't2', teacherName: 'Ato Daniel Girma', periodsPerWeek: 5 },
-  { subjectId: 'phys', subjectName: 'Physics', subjectAmharic: 'ፊዚክስ', teacherId: 't1', teacherName: 'W/ro Almaz Kebede', periodsPerWeek: 4 },
-  { subjectId: 'chem', subjectName: 'Chemistry', subjectAmharic: 'ኬሚስትሪ', teacherId: 't3', teacherName: 'Ato Birhanu Ayele', periodsPerWeek: 4 },
-  { subjectId: 'bio', subjectName: 'Biology', subjectAmharic: 'ባዮሎጂ', teacherId: 't-bio', teacherName: 'W/ro Tigist Hailu', periodsPerWeek: 4 },
-  { subjectId: 'eng', subjectName: 'English Language', subjectAmharic: 'እንግሊዝኛ', teacherId: 't4', teacherName: 'Ato Tesfaye Mengistu', periodsPerWeek: 5 },
-  { subjectId: 'amh', subjectName: 'Amharic Literature', subjectAmharic: 'አማርኛ', teacherId: 't-amh', teacherName: 'W/ro Aster Molla', periodsPerWeek: 4 },
+  { subjectId: 'eng', subjectName: 'English Language', subjectAmharic: 'እንግሊዝኛ', teacherId: 't4', teacherName: 'Ato Tesfaye Mengistu', periodsPerWeek: 4 },
+  { subjectId: 'math', subjectName: 'Mathematics', subjectAmharic: 'ሒሳብ', teacherId: 't2', teacherName: 'Ato Daniel Girma', periodsPerWeek: 4 },
+  { subjectId: 'phys', subjectName: 'Physics', subjectAmharic: 'ፊዚክስ', teacherId: 't1', teacherName: 'W/ro Almaz Kebede', periodsPerWeek: 3 },
+  { subjectId: 'chem', subjectName: 'Chemistry', subjectAmharic: 'ኬሚስትሪ', teacherId: 't3', teacherName: 'Ato Birhanu Ayele', periodsPerWeek: 3 },
+  { subjectId: 'bio', subjectName: 'Biology', subjectAmharic: 'ባዮሎጂ', teacherId: 't-bio', teacherName: 'W/ro Tigist Hailu', periodsPerWeek: 3 },
   { subjectId: 'geo', subjectName: 'Geography', subjectAmharic: 'ጂኦግራፊ', teacherId: 't-geo', teacherName: 'W/ro Genet Abebe', periodsPerWeek: 3 },
   { subjectId: 'hist', subjectName: 'History', subjectAmharic: 'ታሪክ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 3 },
-  { subjectId: 'civ', subjectName: 'Civics & Ethics', subjectAmharic: 'ስነ-ዜጋ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 2 },
-  { subjectId: 'ict', subjectName: 'Information Tech (ICT)', subjectAmharic: 'ኢንፎርሜሽን ቴክኖሎጂ', teacherId: 't-ict', teacherName: 'Ato Robel Tilahun', periodsPerWeek: 3 }
+  { subjectId: 'pe', subjectName: 'Physical Education (P.E.)', subjectAmharic: 'ስፖርት', teacherId: 't-pe', teacherName: 'Ato Yared Kassahun', periodsPerWeek: 2 },
+  { subjectId: 'civ', subjectName: 'Citizenship Education', subjectAmharic: 'ስነ-ዜጋ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 2 },
+  { subjectId: 'amh', subjectName: 'Amharic Language', subjectAmharic: 'አማርኛ', teacherId: 't-amh', teacherName: 'W/ro Aster Molla', periodsPerWeek: 3 },
+  { subjectId: 'econ', subjectName: 'Economics', subjectAmharic: 'ኢኮኖሚክስ', teacherId: 't-econ', teacherName: 'Ato Muluneh Desta', periodsPerWeek: 2 }
 ];
 
+// Grade 11 & 12 Natural Science (9 Subjects): English, Biology, Chemistry, Physics, Math, Amharic, Agriculture, IT, CTE
 export const STANDARD_GRADE_11_12_NATURAL_SUBJECTS: SectionSubjectAssignment[] = [
-  { subjectId: 'math', subjectName: 'Advanced Mathematics', subjectAmharic: 'ከፍተኛ ሒሳብ', teacherId: 't2', teacherName: 'Ato Daniel Girma', periodsPerWeek: 6 },
-  { subjectId: 'phys', subjectName: 'Physics (Mechanics & Waves)', subjectAmharic: 'ፊዚክስ', teacherId: 't1', teacherName: 'W/ro Almaz Kebede', periodsPerWeek: 5 },
-  { subjectId: 'chem', subjectName: 'General & Organic Chemistry', subjectAmharic: 'ኬሚስትሪ', teacherId: 't3', teacherName: 'Ato Birhanu Ayele', periodsPerWeek: 5 },
-  { subjectId: 'bio', subjectName: 'Molecular & Evolutionary Biology', subjectAmharic: 'ባዮሎጂ', teacherId: 't-bio', teacherName: 'W/ro Tigist Hailu', periodsPerWeek: 5 },
-  { subjectId: 'eng', subjectName: 'English for Academic Purposes', subjectAmharic: 'እንግሊዝኛ', teacherId: 't4', teacherName: 'Ato Tesfaye Mengistu', periodsPerWeek: 4 },
-  { subjectId: 'civ', subjectName: 'Civics & Ethical Studies', subjectAmharic: 'ስነ-ዜጋና ስነ-ምግባር', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 3 },
-  { subjectId: 'ict', subjectName: 'ICT & Computing', subjectAmharic: 'የኮምፒውተር ሳይንስ', teacherId: 't-ict', teacherName: 'Ato Robel Tilahun', periodsPerWeek: 3 }
+  { subjectId: 'eng', subjectName: 'English Language', subjectAmharic: 'እንግሊዝኛ', teacherId: 't4', teacherName: 'Ato Tesfaye Mengistu', periodsPerWeek: 4 },
+  { subjectId: 'bio', subjectName: 'Biology', subjectAmharic: 'ባዮሎጂ', teacherId: 't-bio', teacherName: 'W/ro Tigist Hailu', periodsPerWeek: 4 },
+  { subjectId: 'chem', subjectName: 'Chemistry', subjectAmharic: 'ኬሚስትሪ', teacherId: 't3', teacherName: 'Ato Birhanu Ayele', periodsPerWeek: 4 },
+  { subjectId: 'phys', subjectName: 'Physics', subjectAmharic: 'ፊዚክስ', teacherId: 't1', teacherName: 'W/ro Almaz Kebede', periodsPerWeek: 4 },
+  { subjectId: 'math', subjectName: 'Mathematics', subjectAmharic: 'ሒሳብ', teacherId: 't2', teacherName: 'Ato Daniel Girma', periodsPerWeek: 5 },
+  { subjectId: 'amh', subjectName: 'Amharic Language', subjectAmharic: 'አማርኛ', teacherId: 't-amh', teacherName: 'W/ro Aster Molla', periodsPerWeek: 3 },
+  { subjectId: 'agri', subjectName: 'Agriculture', subjectAmharic: 'ግብርና', teacherId: 't-agri', teacherName: 'W/ro Selamawit Bekele', periodsPerWeek: 3 },
+  { subjectId: 'it', subjectName: 'Information Technology (IT)', subjectAmharic: 'ኢንፎርሜሽን ቴክኖሎጂ', teacherId: 't-ict', teacherName: 'Ato Robel Tilahun', periodsPerWeek: 3 },
+  { subjectId: 'cte', subjectName: 'Career & Technical Education (CTE)', subjectAmharic: 'የስራና ቴክኒክ (CTE)', teacherId: 't-cte', teacherName: 'Ato Ermias Haile', periodsPerWeek: 3 }
 ];
 
+// Grade 11 & 12 Social Science (8 Subjects): English, Math, Geography, History, Economics, IT, Citizenship, CTE
 export const STANDARD_GRADE_11_12_SOCIAL_SUBJECTS: SectionSubjectAssignment[] = [
-  { subjectId: 'hist', subjectName: 'History (Ethiopian & World)', subjectAmharic: 'ታሪክ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 6 },
-  { subjectId: 'geo', subjectName: 'Geography & Regional Planning', subjectAmharic: 'ጂኦግራፊ', teacherId: 't-geo', teacherName: 'W/ro Genet Abebe', periodsPerWeek: 5 },
-  { subjectId: 'econ', subjectName: 'Macro & Micro Economics', subjectAmharic: 'ኢኮኖሚክስ', teacherId: 't-econ', teacherName: 'Ato Muluneh Desta', periodsPerWeek: 5 },
-  { subjectId: 'eng', subjectName: 'English Literature & Rhetoric', subjectAmharic: 'እንግሊዝኛ', teacherId: 't4', teacherName: 'Ato Tesfaye Mengistu', periodsPerWeek: 4 },
-  { subjectId: 'amh', subjectName: 'Amharic Language & Literature', subjectAmharic: 'አማርኛ ቋንቋና ስነ-ጽሁፍ', teacherId: 't-amh', teacherName: 'W/ro Aster Molla', periodsPerWeek: 4 },
-  { subjectId: 'math_soc', subjectName: 'General Mathematics & Stats', subjectAmharic: 'ጠቅላላ ሒሳብ', teacherId: 't2', teacherName: 'Ato Daniel Girma', periodsPerWeek: 4 },
-  { subjectId: 'civ', subjectName: 'Citizenship & Constitutional Law', subjectAmharic: 'ስነ-ዜጋ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 3 }
+  { subjectId: 'eng', subjectName: 'English Language', subjectAmharic: 'እንግሊዝኛ', teacherId: 't4', teacherName: 'Ato Tesfaye Mengistu', periodsPerWeek: 4 },
+  { subjectId: 'math', subjectName: 'Mathematics', subjectAmharic: 'ሒሳብ', teacherId: 't2', teacherName: 'Ato Daniel Girma', periodsPerWeek: 4 },
+  { subjectId: 'geo', subjectName: 'Geography', subjectAmharic: 'ጂኦግራፊ', teacherId: 't-geo', teacherName: 'W/ro Genet Abebe', periodsPerWeek: 4 },
+  { subjectId: 'hist', subjectName: 'History', subjectAmharic: 'ታሪክ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 4 },
+  { subjectId: 'econ', subjectName: 'Economics', subjectAmharic: 'ኢኮኖሚክስ', teacherId: 't-econ', teacherName: 'Ato Muluneh Desta', periodsPerWeek: 4 },
+  { subjectId: 'it', subjectName: 'Information Technology (IT)', subjectAmharic: 'ኢንፎርሜሽን ቴክኖሎጂ', teacherId: 't-ict', teacherName: 'Ato Robel Tilahun', periodsPerWeek: 3 },
+  { subjectId: 'civ', subjectName: 'Citizenship Education', subjectAmharic: 'ስነ-ዜጋ', teacherId: 't5', teacherName: 'Ato Solomon Kassa', periodsPerWeek: 3 },
+  { subjectId: 'cte', subjectName: 'Career & Technical Education (CTE)', subjectAmharic: 'የስራና ቴክኒክ (CTE)', teacherId: 't-cte', teacherName: 'Ato Ermias Haile', periodsPerWeek: 3 }
 ];
 
 export const INITIAL_GRADE_SECTIONS: GradeSection[] = [
@@ -1076,8 +1140,7 @@ export const INITIAL_GRADE_SECTIONS: GradeSection[] = [
     roomNumber: 'Room 101',
     buildingBlock: 'Block A (Main Secondary Block)',
     shift: 'Morning Shift (ጧት)',
-    attendanceToday: 96.0,
-    isDemoAvailable: true
+    attendanceToday: 96.0
   },
   {
     id: 'sec-9b',

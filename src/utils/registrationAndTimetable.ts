@@ -28,6 +28,7 @@ export interface RegisteredStudent2019 {
   gender: 'M' | 'F';
   targetGrade: number; // 9, 10, 11, 12
   stream?: 'Natural Science' | 'Social Science';
+  cteSpecialization?: 'Web Design and Development' | 'Marketing' | 'Accounting' | 'Construction' | string;
   academicYear: string; // '2019 E.C.'
   previousSchool: string;
   previousGrade: number;

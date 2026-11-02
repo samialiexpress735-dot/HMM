@@ -239,30 +239,9 @@ export const PREVIOUS_YEAR_ARCHIVE_STUDENTS: ArchiveStudent[] = [
     conduct: 'A'
   }
 ];
-
-export const INITIAL_REGISTERED_2019_STUDENTS: RegisteredStudent2019[] = [
-  {
-    id: 'reg-2019-01',
-    studentId: 'HMM-2019-0901',
-    fullName: 'Yared Getachew Tadesse',
-    fullNameAmharic: 'ያሬድ ጌታቸው ታደሰ',
-    gender: 'M',
-    targetGrade: 9,
-    academicYear: '2019 E.C.',
-    previousSchool: 'Debre Berhan Primary School',
-    previousGrade: 8,
-    previousSection: '8A',
-    previousAverageScore: 94.2,
-    guardianName: 'Ato Getachew Tadesse',
-    guardianPhone: '+251 91 100 2233',
-    conduct: 'A',
-    registrationDate: '2026-09-01',
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80'
-  },
-  {
-    id: 'reg-2019-02',
-    studentId: 'HMM-2019-0902',
-    fullName: 'Bethlehem Alemu Worku',
+export const INITIAL_REGISTERED_2019_STUDENTS: RegisteredStudent2019[] = [];
+/*
+export const MOCK_REGISTERED_2019_ARCHIVE = [
     fullNameAmharic: 'ቤተልሔም አለሙ ወርቁ',
     gender: 'F',
     targetGrade: 9,
@@ -458,6 +437,7 @@ export const INITIAL_REGISTERED_2019_STUDENTS: RegisteredStudent2019[] = [
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80'
   }
 ];
+*/
 
 export const INITIAL_TIMETABLE_SLOTS: TimetableSlot[] = [
   // Section 9A timetable slots

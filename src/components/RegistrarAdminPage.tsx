@@ -51,7 +51,9 @@ import {
   GradeSection,
   STANDARD_GRADE_9_10_SUBJECTS,
   STANDARD_GRADE_11_12_NATURAL_SUBJECTS,
-  STANDARD_GRADE_11_12_SOCIAL_SUBJECTS
+  STANDARD_GRADE_11_12_SOCIAL_SUBJECTS,
+  CTE_SPECIALIZATION_OPTIONS,
+  CTESpecialization
 } from '../data/schoolData';
 
 interface RegistrarAdminPageProps {
@@ -81,7 +83,8 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
 
   // Registration Form State
   const [targetGrade, setTargetGrade] = useState<number>(9);
-  const [targetStream, setTargetStream] = useState<'Natural Science' | 'Social Science' | ''>('');
+  const [targetStream, setTargetStream] = useState<'Natural Science' | 'Social Science'>('Natural Science');
+  const [cteSpecialization, setCteSpecialization] = useState<CTESpecialization>('Web Design and Development');
   const [searchArchiveQuery, setSearchArchiveQuery] = useState<string>('');
   const [fullName, setFullName] = useState<string>('');
   const [fullNameAmharic, setFullNameAmharic] = useState<string>('');
@@ -96,6 +99,7 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
 
   // Allocation State
   const [allocationGrade, setAllocationGrade] = useState<number>(9);
+  const [allocationStream, setAllocationStream] = useState<'Natural Science' | 'Social Science'>('Natural Science');
   const [studentsPerSection, setStudentsPerSection] = useState<number>(6);
   const [numSectionsInput, setNumSectionsInput] = useState<number>(2);
   const [allocationMethod, setAllocationMethod] = useState<'by-size' | 'by-count'>('by-size');
@@ -160,7 +164,8 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
       fullNameAmharic: fullNameAmharic.trim() || fullName.trim(),
       gender,
       targetGrade,
-      stream: targetGrade >= 11 ? (targetStream as any) : undefined,
+      stream: targetGrade >= 11 ? targetStream : undefined,
+      cteSpecialization: targetGrade >= 11 ? cteSpecialization : undefined,
       academicYear: '2019 E.C.',
       previousSchool: previousSchool.trim() || 'Debre Berhan Feeder School',
       previousGrade,
@@ -185,19 +190,38 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
     setGuardianName('');
     alert(
       lang === 'am'
-        ? `ተማሪ ${newStudent.fullNameAmharic} ለ2019 ዓ.ም. በ${targetGrade}ኛ ክፍል በተሳካ ሁኔታ ተመዝግቧል!`
-        : `Student ${newStudent.fullName} successfully registered for 2019 E.C. Grade ${targetGrade}!`
+        ? `ተማሪ ${newStudent.fullNameAmharic} ለ2019 ዓ.ም. በ${targetGrade}ኛ ክፍል ${
+            targetGrade >= 11
+              ? `(${targetStream === 'Natural Science' ? 'የተፈጥሮ ሳይንስ' : 'የማህበራዊ ሳይንስ'} - ${cteSpecialization})`
+              : ''
+          } በተሳካ ሁኔታ ተመዝግቧል!`
+        : `Student ${newStudent.fullName} successfully registered for 2019 E.C. Grade ${targetGrade}${
+            targetGrade >= 11 ? ` (${targetStream} - ${cteSpecialization})` : ''
+          }!`
     );
   };
 
   // Generate Section Allocation Preview
   const handleGenerateAllocation = () => {
-    const candidates = registeredStudents.filter((s) => s.targetGrade === allocationGrade);
+    const candidates = registeredStudents.filter((s) => {
+      if (s.targetGrade !== allocationGrade) return false;
+      if (allocationGrade >= 11) {
+        return s.stream === allocationStream;
+      }
+      return true;
+    });
+
     if (candidates.length === 0) {
       alert(
         lang === 'am'
-          ? `ለ${allocationGrade}ኛ ክፍል የተመዘገበ ተማሪ አልተገኘም! እባክዎ አስቀድመው ተማሪዎችን ይመዝግቡ።`
-          : `No registered students found for Grade ${allocationGrade}! Please register students first.`
+          ? `ለ${allocationGrade}ኛ ክፍል ${
+              allocationGrade >= 11
+                ? `(${allocationStream === 'Natural Science' ? 'የተፈጥሮ ሳይንስ' : 'የማህበራዊ ሳይንስ'})`
+                : ''
+            } የተመዘገበ ተማሪ አልተገኘም! እባክዎ አስቀድመው ተማሪዎችን ይመዝግቡ።`
+          : `No registered students found for Grade ${allocationGrade}${
+              allocationGrade >= 11 ? ` (${allocationStream})` : ''
+            }! Please register students first.`
       );
       return;
     }
@@ -206,7 +230,7 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
       grade: allocationGrade,
       stream:
         allocationGrade >= 11
-          ? ('Natural Science' as 'Natural Science' | 'Social Science')
+          ? allocationStream
           : undefined,
       studentsPerSection: allocationMethod === 'by-size' ? studentsPerSection : undefined,
       numSections: allocationMethod === 'by-count' ? numSectionsInput : undefined,
@@ -228,7 +252,10 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
       // Pick standard subject template
       let standardSubjects = STANDARD_GRADE_9_10_SUBJECTS;
       if (allocationGrade >= 11) {
-        standardSubjects = STANDARD_GRADE_11_12_NATURAL_SUBJECTS;
+        standardSubjects =
+          allocationStream === 'Social Science' || bucket.sectionCode.includes('-Soc')
+            ? STANDARD_GRADE_11_12_SOCIAL_SUBJECTS
+            : STANDARD_GRADE_11_12_NATURAL_SUBJECTS;
       }
 
       // Empty the assigned teachers as specified by the user
@@ -238,13 +265,21 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
         teacherName: lang === 'am' ? 'ያልተመደበ (Unassigned)' : 'Unassigned (ያልተመደበ)'
       }));
 
+      const streamName = allocationGrade >= 11 ? allocationStream : 'General Secondary';
+      const streamAmharic =
+        allocationGrade >= 11
+          ? allocationStream === 'Natural Science'
+            ? 'የተፈጥሮ ሳይንስ'
+            : 'የማህበራዊ ሳይንስ'
+          : 'አጠቃላይ 2ኛ ደረጃ';
+
       return {
         id: `sec-2019-${bucket.sectionCode.toLowerCase()}`,
         grade: allocationGrade,
         section: bucket.sectionCode,
         sectionLetter: bucket.sectionLetter,
-        stream: allocationGrade >= 11 ? 'Natural Science' : 'General Secondary',
-        streamAmharic: allocationGrade >= 11 ? 'የተፈጥሮ ሳይንስ' : 'አጠቃላይ 2ኛ ደረጃ',
+        stream: streamName,
+        streamAmharic,
         totalStudents: bucket.students.length,
         maleStudents: bucket.maleCount,
         femaleStudents: bucket.femaleCount,
@@ -370,11 +405,16 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
       chem: 'Chemistry',
       bio: 'Biology',
       eng: 'English Language',
-      amh: 'Amharic Literature',
+      amh: 'Amharic Language',
       geo: 'Geography',
       hist: 'History',
-      civ: 'Civics & Ethics',
-      ict: 'Information Tech (ICT)'
+      civ: 'Citizenship Education',
+      it: 'Information Technology (IT)',
+      ict: 'Information Technology (IT)',
+      pe: 'Physical Education (P.E.)',
+      econ: 'Economics',
+      agri: 'Agriculture',
+      cte: 'Career & Technical Education (CTE)'
     };
 
     const newSlot: TimetableSlot = {
@@ -586,6 +626,118 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
                   ))}
                 </div>
               </div>
+
+              {/* STREAM SELECTION & CTE SPECIALIZATION (GRADES 11 & 12 ONLY) */}
+              {targetGrade >= 11 && (
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50/50 border-2 border-emerald-300 rounded-2xl p-4 space-y-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-black text-slate-800">
+                      {lang === 'am'
+                        ? 'የመሰናዶ የትምህርት ዘርፍ ምረጥ (Academic Stream Toggle): *'
+                        : 'Select Preparatory Academic Stream (Natural vs. Social): *'}
+                    </label>
+                    <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300">
+                      Grade {targetGrade} MoE Stream
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Natural Science Button */}
+                    <button
+                      type="button"
+                      onClick={() => setTargetStream('Natural Science')}
+                      className={`p-3.5 rounded-xl border-2 text-left cursor-pointer transition-all ${
+                        targetStream === 'Natural Science'
+                          ? 'bg-emerald-900 text-white border-emerald-950 shadow-md ring-2 ring-emerald-500'
+                          : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">🧪</span>
+                          <span className="font-black text-xs">
+                            Natural Science (የተፈጥሮ ሳይንስ)
+                          </span>
+                        </div>
+                        {targetStream === 'Natural Science' && (
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        )}
+                      </div>
+                      <p className={`text-[10.5px] leading-relaxed ${
+                        targetStream === 'Natural Science' ? 'text-emerald-200' : 'text-slate-600'
+                      }`}>
+                        <strong>9 Subjects:</strong> English, Biology, Chemistry, Physics, Math, Amharic, Agriculture, IT, CTE
+                      </p>
+                    </button>
+
+                    {/* Social Science Button */}
+                    <button
+                      type="button"
+                      onClick={() => setTargetStream('Social Science')}
+                      className={`p-3.5 rounded-xl border-2 text-left cursor-pointer transition-all ${
+                        targetStream === 'Social Science'
+                          ? 'bg-amber-900 text-white border-amber-950 shadow-md ring-2 ring-amber-500'
+                          : 'bg-white text-slate-800 border-slate-200 hover:border-amber-300 hover:bg-amber-50/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">📜</span>
+                          <span className="font-black text-xs">
+                            Social Science (የማህበራዊ ሳይንስ)
+                          </span>
+                        </div>
+                        {targetStream === 'Social Science' && (
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                        )}
+                      </div>
+                      <p className={`text-[10.5px] leading-relaxed ${
+                        targetStream === 'Social Science' ? 'text-amber-200' : 'text-slate-600'
+                      }`}>
+                        <strong>8 Subjects:</strong> English, Math, Geography, History, Economics, IT, Citizenship, CTE
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* CTE Specialization Elective Picker */}
+                  <div className="pt-2.5 border-t border-emerald-200/80">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-[11px] font-black text-slate-800">
+                        {lang === 'am'
+                          ? 'የስራና ቴክኒክ (CTE) ሙያ ምርጫ (Career & Technical Elective):'
+                          : 'CTE Specialization Package (Mandatory Practical Elective):'}
+                      </label>
+                      <span className="text-[10px] text-emerald-800 font-bold">
+                        Available in both Streams
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {CTE_SPECIALIZATION_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setCteSpecialization(opt.labelEn)}
+                          className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                            cteSpecialization === opt.labelEn
+                              ? 'bg-emerald-800 text-white border-emerald-900 shadow-sm ring-2 ring-emerald-400 font-black'
+                              : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50 font-bold'
+                          }`}
+                        >
+                          <div className="text-xs truncate">{opt.labelEn}</div>
+                          <div
+                            className={`text-[10px] truncate mt-0.5 ${
+                              cteSpecialization === opt.labelEn ? 'text-emerald-100' : 'text-slate-500'
+                            }`}
+                          >
+                            {opt.labelAm}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* SEARCH & AUTOCOMPLETE RECOMMENDATION BOX */}
               <div className="bg-amber-50/70 border-2 border-dashed border-amber-300 rounded-2xl p-4 space-y-3">
@@ -817,12 +969,31 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
                         <div className="font-extrabold text-slate-900 truncate">
                           {idx + 1}. {st.fullName}
                         </div>
-                        <div className="text-[10px] text-slate-500 truncate flex items-center gap-1">
+                        <div className="text-[10px] text-slate-500 truncate flex flex-wrap items-center gap-1.5 mt-0.5">
                           <span className="font-mono">{st.studentId}</span>
                           <span>•</span>
                           <span>Score: {st.previousAverageScore}%</span>
                           <span>•</span>
                           <span>{st.gender === 'F' ? 'Female' : 'Male'}</span>
+                          {st.stream && (
+                            <>
+                              <span>•</span>
+                              <span
+                                className={`px-1.5 py-0.2 rounded font-extrabold text-[9.5px] ${
+                                  st.stream === 'Natural Science'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {st.stream === 'Natural Science' ? '🧪 Natural' : '📜 Social'}
+                              </span>
+                            </>
+                          )}
+                          {st.cteSpecialization && (
+                            <span className="px-1.5 py-0.2 rounded font-medium text-[9.5px] bg-slate-200 text-slate-800">
+                              CTE: {st.cteSpecialization}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -885,22 +1056,60 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
                 </p>
               </div>
 
-              {/* Grade Selector for Allocation */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-500">Grade:</span>
-                <select
-                  value={allocationGrade}
-                  onChange={(e) => {
-                    setAllocationGrade(Number(e.target.value));
-                    setPreviewBuckets(null);
-                  }}
-                  className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 cursor-pointer focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value={9}>Grade 9</option>
-                  <option value={10}>Grade 10</option>
-                  <option value={11}>Grade 11</option>
-                  <option value={12}>Grade 12</option>
-                </select>
+              {/* Grade & Stream Selector for Allocation */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-500">Grade:</span>
+                  <select
+                    value={allocationGrade}
+                    onChange={(e) => {
+                      setAllocationGrade(Number(e.target.value));
+                      setPreviewBuckets(null);
+                    }}
+                    className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-800 cursor-pointer focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value={9}>Grade 9</option>
+                    <option value={10}>Grade 10</option>
+                    <option value={11}>Grade 11</option>
+                    <option value={12}>Grade 12</option>
+                  </select>
+                </div>
+
+                {allocationGrade >= 11 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-500">Stream:</span>
+                    <div className="flex bg-slate-200 p-0.5 rounded-xl text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAllocationStream('Natural Science');
+                          setPreviewBuckets(null);
+                        }}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                          allocationStream === 'Natural Science'
+                            ? 'bg-emerald-800 text-white shadow-2xs'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        🧪 Natural
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAllocationStream('Social Science');
+                          setPreviewBuckets(null);
+                        }}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                          allocationStream === 'Social Science'
+                            ? 'bg-amber-800 text-white shadow-2xs'
+                            : 'text-slate-700 hover:text-slate-900'
+                        }`}
+                      >
+                        📜 Social
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -953,7 +1162,7 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
                       className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-black text-slate-900 focus:ring-2 focus:ring-emerald-500"
                     />
                     <span className="text-[10px] text-slate-500 mt-1 block">
-                      e.g., 6 for test, or 35-40 for full Ethiopian classroom
+                      Standard Ethiopian MoE guideline: 35–45 students per section
                     </span>
                   </>
                 ) : (
@@ -1315,11 +1524,15 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
                   <option value="chem">Chemistry (ኬሚስትሪ)</option>
                   <option value="bio">Biology (ባዮሎጂ)</option>
                   <option value="eng">English Language (እንግሊዝኛ)</option>
-                  <option value="amh">Amharic Literature (አማርኛ)</option>
+                  <option value="amh">Amharic Language (አማርኛ)</option>
                   <option value="geo">Geography (ጂኦግራፊ)</option>
                   <option value="hist">History (ታሪክ)</option>
-                  <option value="civ">Civics & Ethics (ስነ-ዜጋ)</option>
-                  <option value="ict">Information Tech / ICT (አይሲቲ)</option>
+                  <option value="civ">Citizenship Education (ስነ-ዜጋ)</option>
+                  <option value="ict">Information Tech / IT (ኢንፎርሜሽን ቴክኖሎጂ)</option>
+                  <option value="pe">Physical Education (P.E. / ስፖርት)</option>
+                  <option value="econ">Economics (ኢኮኖሚክስ)</option>
+                  <option value="agri">Agriculture (ግብርና)</option>
+                  <option value="cte">Career & Technical Education (CTE / የስራና ቴክኒክ)</option>
                 </select>
               </div>
 

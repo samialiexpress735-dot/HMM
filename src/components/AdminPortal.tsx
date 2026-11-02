@@ -20,7 +20,8 @@ import {
   Filter,
   Check,
   Layers,
-  LogIn
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { Teacher, Student } from '../data/schoolData';
 import { UserAccount, generateStaffPassword, generateStudentPasscode } from '../utils/authUtils';
@@ -36,6 +37,7 @@ interface AdminPortalProps {
   onNavigateToGrades?: () => void;
   onNavigateToRegistrar?: () => void;
   onQuickTeacherLogin?: (teacher: Teacher) => void;
+  onSignOut?: () => void;
 }
 
 export const AdminPortal: React.FC<AdminPortalProps> = ({
@@ -46,7 +48,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   adminUser,
   onNavigateToGrades,
   onNavigateToRegistrar,
-  onQuickTeacherLogin
+  onQuickTeacherLogin,
+  onSignOut
 }) => {
   const [activeAdminTab, setActiveAdminTab] = useState<'staff' | 'credentials' | 'school'>('staff');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -200,24 +203,37 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               </div>
             </div>
 
-            {/* Quick Director Card */}
-            <div className="p-3 bg-emerald-50/80 rounded-2xl border border-emerald-200 flex items-center space-x-3 text-xs">
-              <img
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80"
-                alt="School Administrator"
-                className="w-10 h-10 rounded-xl object-cover border border-emerald-300"
-              />
-              <div>
-                <div className="font-bold text-slate-900">
-                  {adminUser?.fullName || 'Principal Berhanu Wolde, M.Ed.'}
-                </div>
-                <span className="text-[11px] text-emerald-800 font-semibold">
-                  {adminUser?.roleTitle || 'Chief School Administrator'}
-                </span>
-                <div className="text-[10px] text-slate-400">
-                  ID: {adminUser?.adminId || 'DIR-HMM-001'} • Active Admin Session
+            {/* Verified Director Session Card */}
+            <div className="p-3 bg-emerald-50/90 rounded-2xl border border-emerald-300 flex items-center justify-between gap-3 text-xs shadow-sm">
+              <div className="flex items-center space-x-3">
+                <img
+                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80"
+                  alt="School Administrator"
+                  className="w-10 h-10 rounded-xl object-cover border-2 border-emerald-400"
+                />
+                <div>
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <span>{adminUser?.fullName || 'Principal Berhanu Wolde, M.Ed.'}</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Active Admin Session"></span>
+                  </div>
+                  <span className="text-[11px] text-emerald-800 font-semibold block">
+                    {adminUser?.roleTitle || 'Chief School Director'}
+                  </span>
+                  <div className="text-[10px] text-slate-500">
+                    ID: {adminUser?.adminId || 'DIR-HMM-001'} • <span className="text-emerald-700 font-medium">Verified Active Session</span>
+                  </div>
                 </div>
               </div>
+
+              {onSignOut && (
+                <button
+                  onClick={onSignOut}
+                  className="p-1.5 rounded-lg text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 transition-colors cursor-pointer"
+                  title={lang === 'am' ? 'ከአስተዳዳሪ ዴስክ ውጣ' : 'Sign Out Administrator'}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -534,7 +550,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </div>
 
                 {teachers.map((t) => {
-                  const demoPass = generateStaffPassword('Teacher', t.name.split(' ')[0]);
+                  const staffPass = generateStaffPassword('Teacher', t.name.split(' ')[0]);
                   return (
                     <div
                       key={t.id}
@@ -562,10 +578,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
 
                       <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
                         <div className="p-2 bg-white rounded-lg border border-slate-200 font-mono text-[11px] text-slate-700">
-                          Pass: <strong className="text-emerald-900">{demoPass}</strong>
+                          Password: <strong className="text-emerald-900">{staffPass}</strong>
                         </div>
                         <button
-                          onClick={() => handleCopy(`${t.email} / ${demoPass}`, t.id)}
+                          onClick={() => handleCopy(`${t.email} / ${staffPass}`, t.id)}
                           className="p-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-slate-700 transition-colors cursor-pointer"
                           title="Copy login credentials"
                         >

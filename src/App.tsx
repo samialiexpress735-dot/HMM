@@ -77,7 +77,7 @@ export default function App() {
 
   const handleAdminAuthenticated = (admin: AdminUser) => {
     setAdminUser(admin);
-    setIsVisitorPreview(false);
+    setIsVisitorPreview(true);
     setCurrentTab('admin');
   };
 
@@ -88,8 +88,8 @@ export default function App() {
       // ignore
     }
     setAdminUser(null);
-    setIsVisitorPreview(false);
-    setCurrentTab('admin');
+    setIsVisitorPreview(true);
+    setCurrentTab('home');
   };
 
   // 1-Click Teacher Login Handler
@@ -172,8 +172,7 @@ export default function App() {
         adminUser={adminUser}
         onSignOut={handleSignOutAdmin}
         onOpenAdminSignup={() => {
-          setAdminUser(null);
-          setIsVisitorPreview(false);
+          setCurrentTab('admin');
         }}
         teacherUser={teacherUser}
         onSignOutTeacher={handleSignOutTeacher}
@@ -184,16 +183,26 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0">
         {currentTab === 'admin' && (
-          <AdminPortal
-            teachers={teachers}
-            onAddTeacher={handleAddTeacher}
-            students={students}
-            lang={lang}
-            adminUser={adminUser}
-            onNavigateToGrades={() => setCurrentTab('grades')}
-            onNavigateToRegistrar={() => setCurrentTab('registrar')}
-            onQuickTeacherLogin={handleSelectTeacher}
-          />
+          adminUser ? (
+            <AdminPortal
+              teachers={teachers}
+              onAddTeacher={handleAddTeacher}
+              students={students}
+              lang={lang}
+              adminUser={adminUser}
+              onNavigateToGrades={() => setCurrentTab('grades')}
+              onNavigateToRegistrar={() => setCurrentTab('registrar')}
+              onQuickTeacherLogin={handleSelectTeacher}
+              onSignOut={handleSignOutAdmin}
+            />
+          ) : (
+            <AdminSignupPage
+              onAdminAuthenticated={handleAdminAuthenticated}
+              onPreviewPublicSite={() => setCurrentTab('home')}
+              lang={lang}
+              setLang={setLang}
+            />
+          )
         )}
 
         {currentTab === 'registrar' && (

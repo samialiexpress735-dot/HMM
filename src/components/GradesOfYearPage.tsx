@@ -436,11 +436,6 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                         <h3 className="text-base sm:text-lg font-black text-slate-900">
                           {lang === 'am' ? `${sec.grade}ኛ ክፍል • ሴክሽን "${sec.sectionLetter}"` : `Grade ${sec.grade} — Section "${sec.sectionLetter}"`}
                         </h3>
-                        {sec.isDemoAvailable && (
-                          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[11px] font-extrabold animate-pulse">
-                            Active Live Testing (9A)
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold mt-0.5">
                         <span className="text-emerald-800 font-bold">
@@ -664,14 +659,14 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                     <span>{lang === 'am' ? 'የተማሪዎች ዝርዝር እና ማርክ' : 'Open Section Students & Marks'}</span>
                   </button>
 
-                  {/* Test 9A Mark Registering */}
-                  {sec.isDemoAvailable && onNavigateToTeacherPortal && (
+                  {/* Section Teacher Suite Navigation */}
+                  {onNavigateToTeacherPortal && (
                     <button
                       onClick={() => onNavigateToTeacherPortal(sec.section, 'math')}
                       className="btn-animated px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                     >
                       <FileSpreadsheet className="w-4 h-4 text-amber-300" />
-                      <span>{lang === 'am' ? 'ወደ ማርክ መዝገብ ሂድ (9A)' : 'Open Grade 9A Teacher Suite'}</span>
+                      <span>{lang === 'am' ? `የ${sec.section} ማርክ መዝገብ` : `Open ${sec.section} Marks`}</span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   )}
@@ -864,7 +859,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                 </div>
               </div>
 
-              {rosterModalSection.isDemoAvailable && onNavigateToTeacherPortal && (
+              {onNavigateToTeacherPortal && (
                 <button
                   onClick={() => {
                     setRosterModalSection(null);
@@ -873,7 +868,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                   className="btn-animated px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-amber-300" />
-                  <span>Open Full Teacher Sheet →</span>
+                  <span>{lang === 'am' ? `የ${rosterModalSection.section} ማርክ ሉህ ክፈት →` : `Open ${rosterModalSection.section} Sheet →`}</span>
                 </button>
               )}
             </div>

@@ -18,9 +18,10 @@ import {
   AlertCircle,
   Sparkles,
   ArrowRight,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
-import { validateAdminSignup, AdminRegistrationInput } from '../utils/authUtils';
+import { validateAdminSignup, verifyAdminCredentials, AdminRegistrationInput } from '../utils/authUtils';
 
 export interface AdminUser {
   fullName: string;
@@ -30,6 +31,7 @@ export interface AdminUser {
   roleTitle: string;
   adminId: string;
   dateRegistered: string;
+  password?: string;
 }
 
 interface AdminSignupPageProps {
@@ -45,8 +47,9 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
   lang,
   setLang,
 }) => {
-  const [activeMode, setActiveMode] = useState<'signup' | 'login'>('signup');
+  const [activeMode, setActiveMode] = useState<'login' | 'signup'>('login');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -62,19 +65,7 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
 
   // Login fields
   const [loginIdentifier, setLoginIdentifier] = useState('admin@hailemariammamo.edu.et');
-  const [loginPassword, setLoginPassword] = useState('debberhan2017');
-
-  const handleDemoFill = () => {
-    setFullName('Berhanu Wolde Mengesha');
-    setFullNameAmharic('ብርሃኑ ወልደ መንገሻ');
-    setEmail('director@hailemariammamo.edu.et');
-    setPhone('+251 91 142 5566');
-    setRoleTitle('Principal & School Director');
-    setMoeCode('HMM-MOE-2017');
-    setPassword('debberhan2017');
-    setConfirmPassword('debberhan2017');
-    setErrorMsg(null);
-  };
+  const [loginPassword, setLoginPassword] = useState('');
 
   const handleSignupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +88,8 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
       return;
     }
 
+    setIsSubmitting(true);
+
     const newAdmin: AdminUser = {
       fullName: input.fullName.trim(),
       fullNameAmharic: input.fullNameAmharic?.trim(),
@@ -105,6 +98,7 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
       roleTitle: input.roleTitle,
       adminId: `DIR-HMM-${Math.floor(100 + Math.random() * 900)}`,
       dateRegistered: new Date().toISOString().split('T')[0],
+      password: input.password
     };
 
     try {
@@ -121,16 +115,20 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
     );
 
     setTimeout(() => {
+      setIsSubmitting(false);
       onAdminAuthenticated(newAdmin);
-    }, 600);
+    }, 400);
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!loginIdentifier || !loginPassword) {
-      setErrorMsg(lang === 'am' ? 'እባክዎ ኢሜይል እና የይለፍ ቃል ያስገቡ።' : 'Please provide both email/username and password.');
+    const id = loginIdentifier.trim().toLowerCase();
+    const pass = loginPassword.trim();
+
+    if (!id || !pass) {
+      setErrorMsg(lang === 'am' ? 'እባክዎ ኢሜይል/መለያ እና የይለፍ ቃል ያስገቡ።' : 'Please provide both email/username and password.');
       return;
     }
 
@@ -143,27 +141,40 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
       storedAdmin = null;
     }
 
-    // Default or stored admin
-    const activeAdmin: AdminUser = storedAdmin || {
-      fullName: 'Berhanu Wolde Mengesha, M.Ed.',
-      fullNameAmharic: 'ብርሃኑ ወልደ መንገሻ',
-      email: 'director@hailemariammamo.edu.et',
-      phone: '+251 91 142 5566',
-      roleTitle: 'Principal & School Director',
-      adminId: 'DIR-HMM-001',
-      dateRegistered: '2024-09-01',
-    };
+    const verification = verifyAdminCredentials(loginIdentifier, loginPassword, storedAdmin);
+
+    // Security Gate Enforcement: reject if wrong password or unauthorized user
+    if (!verification.success || !verification.admin) {
+      setIsSubmitting(false);
+      setErrorMsg(
+        lang === 'am'
+          ? 'የተሳሳተ መለያ ወይም የይለፍ ቃል! መዳረሻ ተከልክሏል። እባክዎ በትክክል ያስገቡ።'
+          : verification.error || 'Invalid administrator credentials. Access denied.'
+      );
+      return;
+    }
+
+    const authenticatedAdmin = verification.admin;
+
+    setIsSubmitting(true);
 
     try {
       localStorage.setItem('hmm_admin_logged_in', 'true');
+      localStorage.setItem('hmm_school_admin', JSON.stringify(authenticatedAdmin));
     } catch {
       // fallback
     }
 
-    setSuccessMsg(lang === 'am' ? 'እንኳን ደህና መጡ! ወደ ፖርታል በመግባት ላይ...' : 'Welcome back! Launching school portal...');
+    setSuccessMsg(
+      lang === 'am'
+        ? `እንኳን ደህና መጡ ${authenticatedAdmin.fullName}! የትምህርት ቤት አስተዳዳሪ ዴስክ በመከፈት ላይ...`
+        : `Authenticated successfully as ${authenticatedAdmin.fullName}. Launching secured Admin Desk...`
+    );
+
     setTimeout(() => {
-      onAdminAuthenticated(activeAdmin);
-    }, 500);
+      setIsSubmitting(false);
+      onAdminAuthenticated(authenticatedAdmin!);
+    }, 400);
   };
 
   return (
@@ -271,15 +282,6 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
                 <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
                   {lang === 'am' ? 'የአስተዳዳሪ መረጃ' : 'Director Credentials'}
                 </span>
-                <button
-                  type="button"
-                  onClick={handleDemoFill}
-                  className="flex items-center space-x-1 text-[11px] font-bold text-amber-400 hover:text-amber-300 cursor-pointer bg-amber-950/50 hover:bg-amber-900/60 px-2 py-0.5 rounded border border-amber-600/40"
-                  title="Auto fill sample administrator details"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>{lang === 'am' ? 'ናሙና መረጃ ሙላ' : 'Auto-Fill Principal Sample'}</span>
-                </button>
               </div>
 
               {/* Full Name English & Amharic */}
@@ -438,15 +440,20 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/60 flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all transform active:scale-[0.99]"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-60 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/60 flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all transform active:scale-[0.99]"
                 >
-                  <ShieldCheck className="w-5 h-5 text-amber-300" />
+                  {isSubmitting ? (
+                    <RefreshCw className="w-5 h-5 animate-spin text-amber-300" />
+                  ) : (
+                    <ShieldCheck className="w-5 h-5 text-amber-300" />
+                  )}
                   <span>
-                    {lang === 'am'
-                      ? 'አስተዳዳሪውን መዝግብ እና ፖርታሉን ክፈት'
-                      : 'Register School Admin & Launch Portal'}
+                    {isSubmitting
+                      ? (lang === 'am' ? 'በመመዝገብ ላይ...' : 'Registering Administrator...')
+                      : (lang === 'am' ? 'አስተዳዳሪውን መዝግብ እና ፖርታሉን ክፈት' : 'Register School Admin & Launch Portal')}
                   </span>
-                  <ArrowRight className="w-4 h-4 text-emerald-200" />
+                  {!isSubmitting && <ArrowRight className="w-4 h-4 text-emerald-200" />}
                 </button>
               </div>
 
@@ -502,22 +509,40 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all"
+                  disabled={isSubmitting}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold rounded-xl shadow-lg flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all"
                 >
-                  <ShieldCheck className="w-5 h-5 text-amber-300" />
-                  <span>{lang === 'am' ? 'ወደ አስተዳዳሪ ዴስክ ግባ' : 'Sign In as Administrator'}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  {isSubmitting ? (
+                    <RefreshCw className="w-5 h-5 animate-spin text-amber-300" />
+                  ) : (
+                    <ShieldCheck className="w-5 h-5 text-amber-300" />
+                  )}
+                  <span>
+                    {isSubmitting
+                      ? (lang === 'am' ? 'ማረጋገጫ በመፈተሽ ላይ...' : 'Verifying Admin Credentials...')
+                      : (lang === 'am' ? 'ወደ አስተዳዳሪ ዴስክ ግባ' : 'Sign In as Administrator')}
+                  </span>
+                  {!isSubmitting && <ArrowRight className="w-4 h-4" />}
                 </button>
               </div>
 
-              {/* Quick default credential info */}
-              <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl text-[11px] text-slate-400">
-                <div className="font-semibold text-amber-300 mb-1">Default Pre-configured Admin:</div>
-                <div className="flex justify-between">
-                  <span>Username:</span> <code className="text-emerald-300">admin</code>
+              {/* Official Credential Notice */}
+              <div className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl text-[11px] text-slate-400">
+                <div className="font-semibold text-amber-300 mb-1.5 flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{lang === 'am' ? 'የተፈቀደላቸው የአስተዳዳሪ መለያዎች' : 'Authorized Administrator Credentials:'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Password:</span> <code className="text-emerald-300">debberhan2017</code>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-1 border-b border-slate-800/60">
+                  <span className="text-slate-400">{lang === 'am' ? 'የተጠቃሚ ስም / ኢሜይል:' : 'Username / Email:'}</span>
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <code className="text-emerald-300 font-bold bg-slate-900 px-1 rounded">admin</code>
+                    <span className="text-slate-500">or</span>
+                    <code className="text-emerald-300 bg-slate-900 px-1 rounded text-[10px]">director@hailemariammamo.edu.et</code>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-slate-400">{lang === 'am' ? 'የይለፍ ቃል:' : 'Password:'}</span>
+                  <code className="text-emerald-300 font-mono font-bold bg-slate-900 px-1.5 py-0.5 rounded">debberhan2017</code>
                 </div>
               </div>
             </form>

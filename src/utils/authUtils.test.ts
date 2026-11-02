@@ -5,6 +5,7 @@ import {
   generateStaffPassword,
   authenticateUser,
   validateAdminSignup,
+  verifyAdminCredentials,
   UserAccount
 } from './authUtils';
 
@@ -115,4 +116,42 @@ test('authenticateUser checks credentials and status accurately', () => {
   const r5 = authenticateUser(accounts, 'suspended_user', 'pass123');
   assert.equal(r5.success, false);
   assert.equal(r5.error?.includes('suspended'), true);
+});
+
+test('verifyAdminCredentials strictly validates administrator logins', () => {
+  // 1. Correct default admin login
+  const validDirector = verifyAdminCredentials('admin', 'debberhan2017');
+  assert.equal(validDirector.success, true);
+  assert.equal(validDirector.admin?.adminId, 'DIR-HMM-001');
+
+  const validEmail = verifyAdminCredentials('director@hailemariammamo.edu.et', 'debberhan2017');
+  assert.equal(validEmail.success, true);
+
+  // 2. Reject incorrect password
+  const badPassword = verifyAdminCredentials('admin', 'wrong_pass_123');
+  assert.equal(badPassword.success, false);
+  assert.equal(badPassword.error?.includes('Invalid administrator credentials'), true);
+
+  // 3. Reject unknown username
+  const unknownUser = verifyAdminCredentials('random_intruder', 'debberhan2017');
+  assert.equal(unknownUser.success, false);
+  assert.equal(unknownUser.error?.includes('Invalid administrator credentials'), true);
+
+  // 4. Custom registered admin verification
+  const customAdmin = {
+    fullName: 'Kebede Michael',
+    email: 'kebede.michael@hailemariammamo.edu.et',
+    phone: '+251911223344',
+    roleTitle: 'Vice Principal',
+    adminId: 'DIR-HMM-555',
+    dateRegistered: '2026-09-01',
+    password: 'CustomSecretPassword123'
+  };
+
+  const validCustom = verifyAdminCredentials('kebede.michael@hailemariammamo.edu.et', 'CustomSecretPassword123', customAdmin);
+  assert.equal(validCustom.success, true);
+  assert.equal(validCustom.admin?.fullName, 'Kebede Michael');
+
+  const invalidCustomPass = verifyAdminCredentials('kebede.michael@hailemariammamo.edu.et', 'WrongPassword', customAdmin);
+  assert.equal(invalidCustomPass.success, false);
 });

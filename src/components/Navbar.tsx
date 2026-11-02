@@ -16,7 +16,8 @@ import {
   LogOut,
   ShieldCheck,
   Layers,
-  UserPlus
+  UserPlus,
+  Lock
 } from 'lucide-react';
 import { AdminUser } from './AdminSignupPage';
 import { Teacher } from '../data/schoolData';
@@ -53,9 +54,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     {
       id: 'admin',
-      labelEn: 'Admin Desk',
-      labelAm: 'አድሚን ዴስክ',
-      icon: Shield,
+      labelEn: adminUser ? 'Admin Desk' : 'Admin Desk 🔒',
+      labelAm: adminUser ? 'አድሚን ዴስክ' : 'አድሚን ዴስክ 🔒',
+      icon: adminUser ? ShieldCheck : Lock,
       highlight: true
     },
     {
@@ -74,8 +75,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     },
     {
       id: 'teacher',
-      labelEn: 'Teacher (9A)',
-      labelAm: 'ማርክ/አቴንዳንስ 9A',
+      labelEn: 'Teacher Suite',
+      labelAm: 'የመምህራን ዴስክ',
       icon: FileSpreadsheet,
       highlight: true
     },
@@ -271,10 +272,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onOpenAdminSignup}
                 className="btn-animated flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 transition-all shadow-sm cursor-pointer flex-shrink-0"
-                title={lang === 'am' ? 'የአስተዳዳሪ ምዝገባ' : 'Admin Registration & Sign In'}
+                title={lang === 'am' ? 'የአስተዳዳሪ መግቢያ' : 'Admin Sign In'}
               >
-                <Shield className="w-3.5 h-3.5 text-slate-950" />
-                <span>{lang === 'am' ? 'አስተዳዳሪ ምዝገባ' : 'Admin Signup'}</span>
+                <Lock className="w-3.5 h-3.5 text-slate-950" />
+                <span>{lang === 'am' ? 'አስተዳዳሪ መግቢያ' : 'Admin Sign In'}</span>
               </button>
             )}
 
