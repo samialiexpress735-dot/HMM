@@ -238,9 +238,8 @@ export default function App() {
     setTeacherUser(null);
   };
 
-  const handleAddTeacher = async (newTeacher: Teacher) => {
+  const handleAddTeacher = (newTeacher: Teacher) => {
     setTeachers((prev) => [newTeacher, ...prev.filter((t) => t.id !== newTeacher.id)]);
-    await syncTeacherToCloud(newTeacher);
   };
 
   const handleUpdateSection = (updated: GradeSection) => {

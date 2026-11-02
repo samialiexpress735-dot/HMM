@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure password column exists on already-created tables
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password TEXT;
+
 -- 3. Teachers Table (Managed by School Director)
 CREATE TABLE IF NOT EXISTS teachers (
   id TEXT PRIMARY KEY,
@@ -39,6 +42,9 @@ CREATE TABLE IF NOT EXISTS teachers (
   sections_teaching TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure sections_teaching column exists on already-created teachers table
+ALTER TABLE teachers ADD COLUMN IF NOT EXISTS sections_teaching TEXT[];
 
 -- 4. Grade Sections Table
 CREATE TABLE IF NOT EXISTS grade_sections (

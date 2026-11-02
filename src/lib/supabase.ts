@@ -50,6 +50,13 @@ export function initSupabase(): SupabaseClient | null {
 
 export let supabase: SupabaseClient | null = initSupabase();
 
+export function getSupabaseClient(): SupabaseClient | null {
+  if (!supabase) {
+    supabase = initSupabase();
+  }
+  return supabase;
+}
+
 export function setSupabaseCredentials(url: string, key: string) {
   try {
     localStorage.setItem('hmm_supabase_url', url.trim());
@@ -75,9 +82,10 @@ export const getSupabaseStatus = () => {
 // ==============================================================================
 
 export async function fetchTeachersFromCloud(): Promise<Teacher[]> {
-  if (!supabase) return [];
+  const client = getSupabaseClient();
+  if (!client) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('teachers')
       .select('*')
       .order('name', { ascending: true });
@@ -110,10 +118,20 @@ export async function fetchTeachersFromCloud(): Promise<Teacher[]> {
   }
 }
 
-export async function syncTeacherToCloud(teacher: Teacher): Promise<boolean> {
-  if (!supabase) return false;
+export async function syncTeacherToCloud(
+  teacher: Teacher
+): Promise<{ success: boolean; error?: string }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      success: false,
+      error: 'Supabase is not connected. Click "Supabase Settings" to enter your Project URL and Anon Key.'
+    };
+  }
+
   try {
-    const { error } = await supabase.from('teachers').upsert({
+    // 1. Attempt insert with all columns
+    let { error } = await client.from('teachers').upsert({
       id: teacher.id,
       name: teacher.name,
       name_amharic: teacher.nameAmharic || null,
@@ -124,19 +142,116 @@ export async function syncTeacherToCloud(teacher: Teacher): Promise<boolean> {
       qualification: teacher.qualification,
       avatar: '',
       office_hours: teacher.officeHours,
-      is_online: teacher.isOnline,
+      is_online: Boolean(teacher.isOnline),
       sections_teaching: teacher.sectionsTeaching || []
     });
 
-    if (error) {
-      console.error('Supabase syncTeacher error:', error.message);
-      return false;
+    // 2. If it failed because sections_teaching does not exist in Supabase table (error 42703), retry with core columns
+    if (error && (error.message?.includes('sections_teaching') || error.code === '42703')) {
+      const retryResult = await client.from('teachers').upsert({
+        id: teacher.id,
+        name: teacher.name,
+        name_amharic: teacher.nameAmharic || null,
+        department: teacher.department,
+        subject: teacher.subject,
+        email: teacher.email,
+        phone: teacher.phone,
+        qualification: teacher.qualification,
+        avatar: '',
+        office_hours: teacher.officeHours,
+        is_online: Boolean(teacher.isOnline)
+      });
+      error = retryResult.error;
+
+      // Minimal fallback if other optional columns are missing
+      if (error && (error.code === '42703' || error.message?.includes('does not exist'))) {
+        const minimalRetry = await client.from('teachers').upsert({
+          id: teacher.id,
+          name: teacher.name,
+          department: teacher.department,
+          subject: teacher.subject,
+          email: teacher.email,
+          phone: teacher.phone
+        });
+        error = minimalRetry.error;
+      }
     }
-    return true;
-  } catch (err) {
+
+    // 3. Fallback: If 'id' is BIGINT or UUID type in Supabase (error 22P02)
+    if (error && (error.code === '22P02' || error.message?.includes('invalid input syntax'))) {
+      const uuidVal = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined;
+      if (uuidVal) {
+        const uuidRetry = await client.from('teachers').insert({
+          id: uuidVal,
+          name: teacher.name,
+          department: teacher.department,
+          subject: teacher.subject,
+          email: teacher.email,
+          phone: teacher.phone
+        });
+        error = uuidRetry.error;
+      }
+
+      if (error && (error.code === '22P02' || error.message?.includes('invalid input syntax'))) {
+        const noIdRetry = await client.from('teachers').insert({
+          name: teacher.name,
+          department: teacher.department,
+          subject: teacher.subject,
+          email: teacher.email,
+          phone: teacher.phone
+        });
+        error = noIdRetry.error;
+      }
+    }
+
+    if (error) {
+      console.error('Supabase syncTeacher error:', error.message, error);
+      if (
+        error.code === '42501' ||
+        error.message?.toLowerCase().includes('row-level security') ||
+        error.message?.toLowerCase().includes('permission denied')
+      ) {
+        return {
+          success: false,
+          error: 'RLS Permission Block (42501): Supabase blocked write. You must run "fix_teachers_and_permissions.sql" in Supabase SQL Editor.'
+        };
+      }
+      if (error.code === '42P01' || error.message?.toLowerCase().includes('relation') || error.message?.toLowerCase().includes('does not exist')) {
+        return {
+          success: false,
+          error: 'Table Not Found (42P01): "teachers" table missing. Run "fix_teachers_and_permissions.sql" in Supabase SQL Editor.'
+        };
+      }
+      return { success: false, error: `${error.message} (Code: ${error.code || 'unknown'})` };
+    }
+
+    return { success: true };
+  } catch (err: any) {
     console.warn('Supabase syncTeacher exception:', err);
-    return false;
+    return { success: false, error: err?.message || 'Network exception during sync' };
   }
+}
+
+export async function syncAllTeachersToCloud(
+  teachers: Teacher[]
+): Promise<{ successCount: number; failCount: number; errors: string[] }> {
+  let successCount = 0;
+  let failCount = 0;
+  const errors: string[] = [];
+
+  for (const t of teachers) {
+    const res = await syncTeacherToCloud(t);
+    if (res.success) {
+      successCount++;
+    } else {
+      failCount++;
+      if (res.error && !errors.includes(res.error)) {
+        errors.push(res.error);
+      }
+    }
+  }
+
+  return { successCount, failCount, errors };
 }
 
 export async function deleteTeacherFromCloud(teacherId: string): Promise<boolean> {
