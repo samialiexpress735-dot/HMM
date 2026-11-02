@@ -30,6 +30,12 @@ import {
   Teacher,
   GradeSection
 } from './data/schoolData';
+import {
+  fetchTeachersFromCloud,
+  syncTeacherToCloud,
+  fetchSectionsFromCloud,
+  isSupabaseConfigured
+} from './lib/supabase';
 
 export default function App() {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
@@ -143,6 +149,25 @@ export default function App() {
     if (tabParam && ['home', 'teacher', 'admin', 'grades', 'registrar', 'portal', 'calendar', 'messaging', 'esslce', 'about'].includes(tabParam)) {
       setCurrentTab(tabParam);
     }
+
+    // Fetch live teachers & sections from Supabase PostgreSQL
+    async function loadCloudData() {
+      if (isSupabaseConfigured()) {
+        try {
+          const cloudTeachers = await fetchTeachersFromCloud();
+          if (cloudTeachers && cloudTeachers.length > 0) {
+            setTeachers(cloudTeachers);
+          }
+          const cloudSections = await fetchSectionsFromCloud();
+          if (cloudSections && cloudSections.length > 0) {
+            setSections(cloudSections);
+          }
+        } catch (e) {
+          console.warn('Error fetching Supabase records:', e);
+        }
+      }
+    }
+    loadCloudData();
   }, []);
 
   const handleTogglePortalMode = () => {
@@ -213,8 +238,9 @@ export default function App() {
     setTeacherUser(null);
   };
 
-  const handleAddTeacher = (newTeacher: Teacher) => {
-    setTeachers((prev) => [newTeacher, ...prev]);
+  const handleAddTeacher = async (newTeacher: Teacher) => {
+    setTeachers((prev) => [newTeacher, ...prev.filter((t) => t.id !== newTeacher.id)]);
+    await syncTeacherToCloud(newTeacher);
   };
 
   const handleUpdateSection = (updated: GradeSection) => {

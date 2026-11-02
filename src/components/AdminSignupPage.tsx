@@ -6,24 +6,27 @@
 import React, { useState } from 'react';
 import {
   ShieldCheck,
-  UserCheck,
   Mail,
-  Phone,
   Lock,
-  Building,
-  KeyRound,
   Eye,
   EyeOff,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
   ArrowRight,
   ExternalLink,
   RefreshCw,
-  Shield,
-  Fingerprint
+  Database,
+  KeyRound,
+  Check,
+  Settings
 } from 'lucide-react';
-import { validateAdminSignup, verifyAdminCredentials, AdminRegistrationInput } from '../utils/authUtils';
+import {
+  authenticateAdminFromCloud,
+  isSupabaseConfigured,
+  getSupabaseStatus,
+  setSupabaseCredentials,
+  getSupabaseCredentials
+} from '../lib/supabase';
 
 export interface AdminUser {
   fullName: string;
@@ -49,164 +52,97 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
   lang,
   setLang,
 }) => {
-  const [activeMode, setActiveMode] = useState<'login' | 'signup'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Signup fields
-  const [fullName, setFullName] = useState('');
-  const [fullNameAmharic, setFullNameAmharic] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('+251 91 ');
-  const [roleTitle, setRoleTitle] = useState('Principal & School Director');
-  const [moeCode, setMoeCode] = useState('HMM-MOE-2017');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
-  // Login fields
+  // Login credentials fields
   const [loginIdentifier, setLoginIdentifier] = useState('admin');
   const [loginPassword, setLoginPassword] = useState('debberhan2017');
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
+  // Supabase Credentials Settings Modal / Accordion
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const currentCredentials = getSupabaseCredentials();
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(currentCredentials.url);
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(currentCredentials.key);
+  const [configSaved, setConfigSaved] = useState(false);
+
+  const supabaseStatus = getSupabaseStatus();
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setSuccessMsg(null);
 
-    const input: AdminRegistrationInput = {
-      fullName,
-      fullNameAmharic,
-      email,
-      phone,
-      roleTitle,
-      moeCode,
-      password,
-      confirmPassword,
-    };
-
-    const validation = validateAdminSignup(input);
-    if (!validation.valid) {
-      setErrorMsg(validation.error || 'Please check the registration details.');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const newAdmin: AdminUser = {
-      fullName: input.fullName.trim(),
-      fullNameAmharic: input.fullNameAmharic?.trim(),
-      email: input.email.trim().toLowerCase(),
-      phone: input.phone.trim(),
-      roleTitle: input.roleTitle,
-      adminId: `DIR-HMM-${Math.floor(100 + Math.random() * 900)}`,
-      dateRegistered: new Date().toISOString().split('T')[0],
-      password: input.password
-    };
-
-    try {
-      localStorage.setItem('hmm_school_admin', JSON.stringify(newAdmin));
-      localStorage.setItem('hmm_admin_logged_in', 'true');
-    } catch {
-      // Local storage fallback
-    }
-
-    setSuccessMsg(
-      lang === 'am'
-        ? `አስተዳዳሪ ${newAdmin.fullName} በተሳካ ሁኔታ ተመዝግቧል! ወደ ፖርታል በመግባት ላይ...`
-        : `Administrator ${newAdmin.fullName} successfully registered! Launching school portal...`
-    );
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onAdminAuthenticated(newAdmin);
-    }, 450);
-  };
-
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg(null);
-
-    const id = loginIdentifier.trim().toLowerCase();
+    const id = loginIdentifier.trim();
     const pass = loginPassword.trim();
 
     if (!id || !pass) {
-      setErrorMsg(lang === 'am' ? 'እባክዎ ኢሜይል/መለያ እና የይለፍ ቃል ያስገቡ።' : 'Please provide both email/username and password.');
-      return;
-    }
-
-    // Check if an admin was previously registered in localStorage
-    let storedAdmin: AdminUser | null = null;
-    try {
-      const data = localStorage.getItem('hmm_school_admin');
-      if (data) storedAdmin = JSON.parse(data);
-    } catch {
-      storedAdmin = null;
-    }
-
-    const verification = verifyAdminCredentials(loginIdentifier, loginPassword, storedAdmin);
-
-    // Security Gate Enforcement: reject if wrong password or unauthorized user
-    if (!verification.success || !verification.admin) {
-      setIsSubmitting(false);
       setErrorMsg(
         lang === 'am'
-          ? 'የተሳሳተ መለያ ወይም የይለፍ ቃል! መዳረሻ ተከልክሏል። እባክዎ በትክክል ያስገቡ።'
-          : verification.error || 'Invalid administrator credentials. Access denied.'
+          ? 'እባክዎ ኢሜይል ወይም መለያ እና የይለፍ ቃል ያስገቡ።'
+          : 'Please enter both administrator username/email and password.'
       );
       return;
     }
 
-    const authenticatedAdmin = verification.admin;
-
     setIsSubmitting(true);
 
     try {
-      localStorage.setItem('hmm_admin_logged_in', 'true');
-      localStorage.setItem('hmm_school_admin', JSON.stringify(authenticatedAdmin));
-    } catch {
-      // fallback
-    }
+      // Authenticate against Supabase "profiles" table (or Supabase Auth / default director)
+      const res = await authenticateAdminFromCloud(id, pass);
 
-    setSuccessMsg(
-      lang === 'am'
-        ? `እንኳን ደህና መጡ ${authenticatedAdmin.fullName}! የትምህርት ቤት አስተዳዳሪ ዴስክ በመከፈት ላይ...`
-        : `Authenticated successfully as ${authenticatedAdmin.fullName}. Launching secured Admin Desk...`
-    );
+      if (!res.success || !res.admin) {
+        setIsSubmitting(false);
+        setErrorMsg(
+          res.error ||
+            (lang === 'am'
+              ? 'የተሳሳተ የአስተዳዳሪ መለያ ወይም የይለፍ ቃል! እባክዎ በሱፓቤዝ (Supabase) የተመዘገበውን ያስገቡ።'
+              : 'Invalid credentials. Please verify your administrator email and password in your Supabase "profiles" table.')
+        );
+        return;
+      }
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onAdminAuthenticated(authenticatedAdmin);
-    }, 450);
-  };
+      const authenticatedAdmin = res.admin;
 
-  // Quick 1-click login for authorized testing
-  const handleQuickDirectorLogin = () => {
-    setLoginIdentifier('admin');
-    setLoginPassword('debberhan2017');
-    setIsSubmitting(true);
-    setTimeout(() => {
-      const director: AdminUser = {
-        fullName: 'Berhanu Wolde Mengesha, M.Ed.',
-        fullNameAmharic: 'ብርሃኑ ወልደ መንገሻ',
-        email: 'director@hailemariammamo.edu.et',
-        phone: '+251 91 142 5566',
-        roleTitle: 'Principal & School Director',
-        adminId: 'DIR-HMM-001',
-        dateRegistered: '2024-09-01'
-      };
       try {
         localStorage.setItem('hmm_admin_logged_in', 'true');
-        localStorage.setItem('hmm_school_admin', JSON.stringify(director));
+        localStorage.setItem('hmm_school_admin', JSON.stringify(authenticatedAdmin));
       } catch {
-        // ignore
+        // fallback
       }
+
+      setSuccessMsg(
+        lang === 'am'
+          ? `እንኳን ደህና መጡ ${authenticatedAdmin.fullName}! ወደ አስተዳዳሪ ዴስክ በመግባት ላይ...`
+          : `Authenticated as ${authenticatedAdmin.fullName}! Opening School Administration Desk...`
+      );
+
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onAdminAuthenticated(authenticatedAdmin);
+      }, 400);
+    } catch (err: any) {
       setIsSubmitting(false);
-      onAdminAuthenticated(director);
-    }, 300);
+      setErrorMsg(err?.message || 'Authentication error occurred.');
+    }
+  };
+
+  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabaseUrlInput.trim() || !supabaseKeyInput.trim()) return;
+
+    setSupabaseCredentials(supabaseUrlInput.trim(), supabaseKeyInput.trim());
+    setConfigSaved(true);
+    setTimeout(() => {
+      setConfigSaved(false);
+      setShowConfigModal(false);
+    }, 1200);
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f2ed] text-[#20130d] flex flex-col justify-between py-6 px-3 sm:px-6 w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#f7f2ed] text-[#20130d] flex flex-col justify-between py-6 px-3 sm:px-6 w-full max-w-full overflow-x-hidden font-sans">
       {/* Top Ministry Ribbon */}
       <div className="w-full max-w-4xl mx-auto mb-6">
         <div className="flex items-center justify-between py-2 border-b border-[#ebd3c4]">
@@ -229,7 +165,7 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
       </div>
 
       {/* Main Container */}
-      <div className="max-w-xl w-full mx-auto bg-white border border-[#ebd3c4] rounded-3xl shadow-xl overflow-hidden">
+      <div className="max-w-md w-full mx-auto bg-white border border-[#ebd3c4] rounded-3xl shadow-xl overflow-hidden">
         {/* Card Header in Warm Brown */}
         <div className="p-6 sm:p-8 bg-gradient-to-b from-[#352016] to-[#20130d] border-b border-[#ebd3c4]/40 text-center relative text-white">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#4a2e22] border-2 border-[#e8b982] shadow-lg mb-3">
@@ -246,49 +182,33 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             ደብረ ብርሃን ኃይለማሪያም ማሞ
           </h1>
-          <p className="text-sm sm:text-base font-semibold text-[#e8b982]">
+          <p className="text-sm font-semibold text-[#e8b982]">
             Hailemariam Mamo Secondary & Preparatory School
           </p>
           <p className="text-xs text-[#ebd3c4] mt-1">
             {lang === 'am'
-              ? 'የትምህርት ቤት አስተዳዳሪ ደህንነቱ የተጠበቀ መግቢያ እና ምዝገባ'
-              : 'Secured School Administrator Authentication & Provisioning Portal'}
+              ? 'የትምህርት ቤት አስተዳዳሪና ዳይሬክተር መግቢያ'
+              : 'School Director & Administration Sign In'}
           </p>
 
-          {/* Mode Switcher */}
-          <div className="mt-5 grid grid-cols-2 p-1 bg-[#1a0f0a] rounded-xl border border-[#4a2e22] text-xs font-bold">
+          {/* Supabase Status Pill */}
+          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#1a0f0a] border border-[#4a2e22] text-[#d4ab94]">
+            <Database className="w-3.5 h-3.5 text-[#c68a4c]" />
+            <span>
+              {supabaseStatus.isConfigured ? 'Supabase Database Connected' : 'Supabase Configurable'}
+            </span>
             <button
               type="button"
-              onClick={() => {
-                setActiveMode('login');
-                setErrorMsg(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer ${
-                activeMode === 'login'
-                  ? 'bg-[#c68a4c] text-[#1a0f0a] shadow font-extrabold'
-                  : 'text-[#d4ab94] hover:text-white'
-              }`}
+              onClick={() => setShowConfigModal(true)}
+              className="text-[#e8b982] hover:underline ml-1 cursor-pointer font-bold"
+              title="Configure or inspect Supabase URL & Key"
             >
-              {lang === 'am' ? '1. የአስተዳዳሪ መግቢያ' : '1. Admin Sign In'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveMode('signup');
-                setErrorMsg(null);
-              }}
-              className={`py-2 rounded-lg transition-all cursor-pointer ${
-                activeMode === 'signup'
-                  ? 'bg-[#c68a4c] text-[#1a0f0a] shadow font-extrabold'
-                  : 'text-[#d4ab94] hover:text-white'
-              }`}
-            >
-              {lang === 'am' ? '2. አዲስ አስተዳዳሪ መዝግብ' : '2. Register New Admin'}
+              [Settings]
             </button>
           </div>
         </div>
 
-        {/* Card Body */}
+        {/* Card Body: Pure Sign In Form */}
         <div className="p-6 sm:p-8 bg-[#ffffff]">
           {errorMsg && (
             <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start space-x-2 text-rose-800 text-xs">
@@ -304,295 +224,170 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
             </div>
           )}
 
-          {activeMode === 'login' ? (
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-[#20130d] mb-1">
-                  {lang === 'am' ? 'የአስተዳዳሪ ኢሜይል ወይም መለያ' : 'Admin Email or Username'}
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    required
-                    value={loginIdentifier}
-                    onChange={(e) => setLoginIdentifier(e.target.value)}
-                    placeholder="admin or director@hailemariammamo.edu.et"
-                    className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                  />
-                </div>
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-[#20130d] mb-1">
+                {lang === 'am' ? 'የአስተዳዳሪ ኢሜይል ወይም መለያ' : 'Administrator Email or Username'}
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-[#786154] absolute left-3 top-3" />
+                <input
+                  type="text"
+                  required
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
+                  placeholder="e.g. director@hailemariammamo.edu.et or admin"
+                  className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
+                />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#20130d] mb-1">
-                  {lang === 'am' ? 'የይለፍ ቃል' : 'Admin Password'}
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="w-full pl-9 pr-9 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-[#786154] hover:text-[#20130d] cursor-pointer"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="pt-2 flex flex-col gap-2.5">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 bg-[#352016] hover:bg-[#20130d] disabled:opacity-60 text-white font-extrabold rounded-xl shadow-md flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all btn-animated"
-                >
-                  {isSubmitting ? (
-                    <RefreshCw className="w-5 h-5 animate-spin text-[#e8b982]" />
-                  ) : (
-                    <ShieldCheck className="w-5 h-5 text-[#e8b982]" />
-                  )}
-                  <span>
-                    {isSubmitting
-                      ? (lang === 'am' ? 'ማረጋገጫ በመፈተሽ ላይ...' : 'Verifying Admin Credentials...')
-                      : (lang === 'am' ? 'ወደ አስተዳዳሪ ዴስክ ግባ' : 'Sign In as Administrator')}
-                  </span>
-                  {!isSubmitting && <ArrowRight className="w-4 h-4 text-[#e8b982]" />}
-                </button>
-
-                {/* 1-Click Fast Auth Button for Quick Verification */}
+            <div>
+              <label className="block text-xs font-bold text-[#20130d] mb-1">
+                {lang === 'am' ? 'የይለፍ ቃል' : 'Password'}
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-[#786154] absolute left-3 top-3" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  placeholder="Enter administrator passcode"
+                  className="w-full pl-9 pr-9 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
+                />
                 <button
                   type="button"
-                  onClick={handleQuickDirectorLogin}
-                  className="w-full py-2 bg-[#f3e8df] hover:bg-[#ebd3c4] text-[#6d3e23] font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-[#ebd3c4] cursor-pointer transition-all"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-[#786154] hover:text-[#20130d] cursor-pointer"
                 >
-                  <Fingerprint className="w-4 h-4 text-[#6d3e23]" />
-                  <span>
-                    {lang === 'am' ? 'በ1-ጠቅታ የት/ቤት ዳይሬክተር ሆነህ ግባ (ቀጥታ መሞከሪያ)' : '1-Click Authenticate as School Director (Fast Access)'}
-                  </span>
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
 
-              {/* Security & Credentials info */}
-              <div className="p-3.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-[11px] text-[#786154]">
-                <div className="font-bold text-[#352016] mb-1.5 flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-[#c68a4c]" />
-                  <span>{lang === 'am' ? 'የተፈቀደላቸው የአስተዳዳሪ መለያዎች' : 'Default Director Credentials:'}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-1 border-b border-[#ebd3c4]/70">
-                  <span className="text-[#786154]">{lang === 'am' ? 'የተጠቃሚ ስም:' : 'Username:'}</span>
-                  <div className="flex items-center gap-1.5 font-mono">
-                    <code className="text-[#352016] font-bold bg-[#f3e8df] px-1.5 py-0.5 rounded">admin</code>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-[#786154]">{lang === 'am' ? 'የይለፍ ቃል:' : 'Password:'}</span>
-                  <code className="text-[#352016] font-mono font-bold bg-[#f3e8df] px-1.5 py-0.5 rounded">debberhan2017</code>
-                </div>
-              </div>
-            </form>
-          ) : (
-            <form onSubmit={handleSignupSubmit} className="space-y-4">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-[#786154] font-bold uppercase tracking-wider">
-                  {lang === 'am' ? 'የአስተዳዳሪ መረጃ' : 'Director Credentials'}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 bg-[#352016] hover:bg-[#20130d] disabled:opacity-60 text-white font-extrabold rounded-xl shadow-md flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all btn-animated"
+              >
+                {isSubmitting ? (
+                  <RefreshCw className="w-5 h-5 animate-spin text-[#e8b982]" />
+                ) : (
+                  <ShieldCheck className="w-5 h-5 text-[#e8b982]" />
+                )}
+                <span>
+                  {isSubmitting
+                    ? (lang === 'am' ? 'ማረጋገጫ በመፈተሽ ላይ...' : 'Verifying with Supabase...')
+                    : (lang === 'am' ? 'ወደ አስተዳዳሪ ዴስክ ግባ' : 'Sign In as Administrator')}
                 </span>
-              </div>
+                {!isSubmitting && <ArrowRight className="w-4 h-4 text-[#e8b982]" />}
+              </button>
+            </div>
+          </form>
 
-              {/* Full Name English & Amharic */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'ሙሉ ስም (እንግሊዝኛ)' : 'Full Name (English)'} *
-                  </label>
-                  <div className="relative">
-                    <UserCheck className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="e.g. Berhanu Wolde"
-                      className="w-full pl-9 pr-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'ሙሉ ስም (አማርኛ)' : 'Full Name (አማርኛ)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={fullNameAmharic}
-                    onChange={(e) => setFullNameAmharic(e.target.value)}
-                    placeholder="ለምሳሌ፡ ብርሃኑ ወልደ"
-                    className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                  />
-                </div>
-              </div>
-
-              {/* Email & Phone */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'የአስተዳዳሪ ኢሜይል' : 'Admin Email'} *
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="admin@hailemariammamo.edu.et"
-                      className="w-full pl-9 pr-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'ስልክ ቁጥር' : 'Phone'} *
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+251 91 142 5566"
-                      className="w-full pl-9 pr-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Role Title & MoE Code */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'የትምህርት ቤት ኃላፊነት' : 'Role Title'} *
-                  </label>
-                  <div className="relative">
-                    <Building className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <select
-                      value={roleTitle}
-                      onChange={(e) => setRoleTitle(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    >
-                      <option value="Principal & School Director">Principal & School Director</option>
-                      <option value="Vice Principal - Academics">Vice Principal - Academics</option>
-                      <option value="Senior Registrar Officer">Senior Registrar Officer</option>
-                      <option value="IT & SIS Administrator">IT & SIS Administrator</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'የትምህርት ሚኒስቴር ኮድ' : 'MoE School Code'} *
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <input
-                      type="text"
-                      required
-                      value={moeCode}
-                      onChange={(e) => setMoeCode(e.target.value)}
-                      placeholder="HMM-MOE-2017"
-                      className="w-full pl-9 pr-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Password & Confirm */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'የይለፍ ቃል' : 'Password'} *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min 6 characters"
-                      className="w-full pl-9 pr-8 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-2.5 text-[#786154] hover:text-[#20130d] cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#20130d] mb-1">
-                    {lang === 'am' ? 'የይለፍ ቃል አረጋግጥ' : 'Confirm Password'} *
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-[#786154] absolute left-3 top-2.5" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password"
-                      className="w-full pl-9 pr-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 bg-[#352016] hover:bg-[#20130d] disabled:opacity-60 text-white font-extrabold rounded-xl shadow-md flex items-center justify-center space-x-2 text-sm cursor-pointer transition-all btn-animated"
-                >
-                  {isSubmitting ? (
-                    <RefreshCw className="w-5 h-5 animate-spin text-[#e8b982]" />
-                  ) : (
-                    <ShieldCheck className="w-5 h-5 text-[#e8b982]" />
-                  )}
-                  <span>
-                    {isSubmitting
-                      ? (lang === 'am' ? 'በመመዝገብ ላይ...' : 'Registering Administrator...')
-                      : (lang === 'am' ? 'አስተዳዳሪውን መዝግብ እና ፖርታሉን ክፈት' : 'Register School Admin & Launch Portal')}
-                  </span>
-                  {!isSubmitting && <ArrowRight className="w-4 h-4 text-[#e8b982]" />}
-                </button>
-              </div>
-            </form>
-          )}
+          {/* Instructions for Manual User Creation in Supabase */}
+          <div className="mt-5 p-3.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-[11px] text-[#786154] space-y-1.5">
+            <div className="font-bold text-[#352016] flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5 text-[#c68a4c]" />
+              <span>{lang === 'am' ? 'አዲስ አስተዳዳሪ በሱፓቤዝ ለመመዝገብ' : 'How to Add Administrators in Supabase:'}</span>
+            </div>
+            <p className="leading-relaxed">
+              Open your <strong>Supabase Table Editor &gt; profiles</strong> and add a row with your admin’s <code>email</code>, <code>password</code>, <code>full_name</code>, and <code>role = &apos;Admin&apos;</code>. Once added, log in directly using that email and password.
+            </p>
+            <div className="pt-1 border-t border-[#ebd3c4]/60 flex items-center justify-between text-[10px]">
+              <span>Default Director account:</span>
+              <code className="text-[#352016] font-bold bg-[#f3e8df] px-1 py-0.5 rounded">admin / debberhan2017</code>
+            </div>
+          </div>
 
           {/* Public Preview Alternative */}
-          <div className="mt-6 pt-5 border-t border-[#ebd3c4] text-center">
+          <div className="mt-5 pt-4 border-t border-[#ebd3c4] text-center">
             <button
               type="button"
               onClick={onPreviewPublicSite}
               className="inline-flex items-center space-x-2 text-xs font-bold text-[#6d3e23] hover:text-[#20130d] transition-colors cursor-pointer"
             >
-              <span>{lang === 'am' ? 'ወይም የትምህርት ቤቱን ድረ-ገጽ ያለመግቢያ ተመልከት' : 'Or Preview Public School Website as Visitor'}</span>
+              <span>{lang === 'am' ? 'የትምህርት ቤቱን ድረ-ገጽ ያለመግቢያ ተመልከት' : 'Preview Public School Website as Visitor'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </div>
+
+      {/* Supabase Connection Settings Modal */}
+      {showConfigModal && (
+        <div className="fixed inset-0 z-50 bg-[#150c08]/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-[#ebd3c4] shadow-2xl">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#ebd3c4]">
+              <div className="flex items-center gap-2">
+                <Database className="w-5 h-5 text-[#6d3e23]" />
+                <h3 className="font-extrabold text-[#20130d] text-base">Supabase Connection Settings</h3>
+              </div>
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="text-[#786154] hover:text-[#20130d] font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[#786154] mb-4 leading-relaxed">
+              If deploying on Vercel, set these in <strong>Project Settings &gt; Environment Variables</strong> as <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>. You can also paste them directly below:
+            </p>
+
+            <form onSubmit={handleSaveSupabaseConfig} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-[#20130d] mb-1">Project URL (VITE_SUPABASE_URL):</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://xyzcompany.supabase.co"
+                  value={supabaseUrlInput}
+                  onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#20130d] mb-1">Anon Public Key (VITE_SUPABASE_ANON_KEY):</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={supabaseKeyInput}
+                  onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs font-mono text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
+                />
+              </div>
+
+              {configSaved && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-800 font-bold flex items-center gap-1.5 text-xs">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Supabase credentials saved and initialized successfully!</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  className="px-4 py-2 rounded-xl text-[#786154] hover:bg-[#f3e8df] font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#352016] hover:bg-[#20130d] text-white font-bold rounded-xl shadow-xs"
+                >
+                  Save & Connect
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer attribution */}
       <div className="max-w-4xl mx-auto text-center mt-6 text-xs text-[#786154]">

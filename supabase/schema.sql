@@ -7,21 +7,23 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. Profiles Table (School Staff, Administrators, Students, Guardians)
+-- NOTE: Add administrators manually in this table (or via Supabase Auth)
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT NOT NULL,
   full_name_amharic TEXT,
-  role TEXT NOT NULL CHECK (role IN ('Admin', 'SubAdmin', 'Teacher', 'Student', 'Parent')),
-  role_title TEXT,
-  email TEXT,
+  role TEXT NOT NULL DEFAULT 'Admin' CHECK (role IN ('Admin', 'SubAdmin', 'Teacher', 'Student', 'Parent')),
+  role_title TEXT DEFAULT 'Principal & School Director',
+  email TEXT UNIQUE NOT NULL,
+  password TEXT, -- For manual administrator entry in Supabase Table Editor
   phone TEXT,
   avatar TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Teachers Table
+-- 3. Teachers Table (Managed by School Director)
 CREATE TABLE IF NOT EXISTS teachers (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -34,6 +36,7 @@ CREATE TABLE IF NOT EXISTS teachers (
   avatar TEXT,
   office_hours TEXT,
   is_online BOOLEAN DEFAULT false,
+  sections_teaching TEXT[],
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -94,7 +97,6 @@ CREATE TABLE IF NOT EXISTS timetable_slots (
   teacher_name TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  -- Unique constraint: A teacher cannot teach two sections during the same day and period!
   CONSTRAINT unique_teacher_day_period UNIQUE (teacher_id, day, period)
 );
 
@@ -136,7 +138,7 @@ CREATE TABLE IF NOT EXISTS student_marks (
 );
 
 -- ==============================================================================
--- 9. Row-Level Security (RLS) & Performance Indexes
+-- 9. Row-Level Security (RLS) & Performance Policies
 -- ==============================================================================
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
@@ -146,22 +148,61 @@ ALTER TABLE timetable_slots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_marks ENABLE ROW LEVEL SECURITY;
 
--- Allow public read access for school portal visitors & students
+-- Allow read access
+DROP POLICY IF EXISTS "Public read profiles" ON profiles;
+CREATE POLICY "Public read profiles" ON profiles FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public read grade_sections" ON grade_sections;
 CREATE POLICY "Public read grade_sections" ON grade_sections FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public read teachers" ON teachers;
 CREATE POLICY "Public read teachers" ON teachers FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public read registrations_2019" ON registrations_2019;
 CREATE POLICY "Public read registrations_2019" ON registrations_2019 FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public read timetable_slots" ON timetable_slots;
 CREATE POLICY "Public read timetable_slots" ON timetable_slots FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public read students" ON students;
 CREATE POLICY "Public read students" ON students FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public read student_marks" ON student_marks;
 CREATE POLICY "Public read student_marks" ON student_marks FOR SELECT USING (true);
 
--- Allow insert/update for application operations
+-- Allow full write/upsert permissions for application operations
+DROP POLICY IF EXISTS "Allow write profiles" ON profiles;
+CREATE POLICY "Allow write profiles" ON profiles FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow write teachers" ON teachers;
+CREATE POLICY "Allow write teachers" ON teachers FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow write registrations_2019" ON registrations_2019;
 CREATE POLICY "Allow write registrations_2019" ON registrations_2019 FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow write timetable_slots" ON timetable_slots;
 CREATE POLICY "Allow write timetable_slots" ON timetable_slots FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow write grade_sections" ON grade_sections;
 CREATE POLICY "Allow write grade_sections" ON grade_sections FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow write students" ON students;
+CREATE POLICY "Allow write students" ON students FOR ALL USING (true);
+
+DROP POLICY IF EXISTS "Allow write student_marks" ON student_marks;
 CREATE POLICY "Allow write student_marks" ON student_marks FOR ALL USING (true);
 
--- Performance Indexes
-CREATE INDEX IF NOT EXISTS idx_reg_grade ON registrations_2019(target_grade);
-CREATE INDEX IF NOT EXISTS idx_timetable_section ON timetable_slots(section_code);
-CREATE INDEX IF NOT EXISTS idx_timetable_teacher ON timetable_slots(teacher_id, day, period);
-CREATE INDEX IF NOT EXISTS idx_students_section ON students(grade, section);
+-- Initial Administrator Seed (Can be replaced or customized in Supabase Table Editor)
+INSERT INTO profiles (full_name, full_name_amharic, role, role_title, email, password, phone)
+VALUES (
+  'Berhanu Wolde Mengesha',
+  'ብርሃኑ ወልደ መንገሻ',
+  'Admin',
+  'Principal & School Director',
+  'director@hailemariammamo.edu.et',
+  'debberhan2017',
+  '+251 91 142 5566'
+)
+ON CONFLICT (email) DO UPDATE SET
+  full_name = EXCLUDED.full_name,
+  password = EXCLUDED.password;
