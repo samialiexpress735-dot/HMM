@@ -940,7 +940,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                         This section currently has <strong>{rosterModalSection.totalStudents}</strong> students recorded in the MoE registry database.
                       </p>
                       <p className="text-[11px] text-slate-400 mt-1">
-                        Full individual interactive slips are active for Grade 9A.
+                        Full individual interactive mark entry is enabled for all enrolled classes.
                       </p>
                     </div>
                   )}

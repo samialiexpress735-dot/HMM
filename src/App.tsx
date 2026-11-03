@@ -11,7 +11,6 @@ import { TeacherPortal } from './components/TeacherPortal';
 import { AdminPortal } from './components/AdminPortal';
 import { AcademicCalendar } from './components/AcademicCalendar';
 import { MessagingBoard } from './components/MessagingBoard';
-import { ESSLCEHub } from './components/ESSLCEHub';
 import { AboutAndCampus } from './components/AboutAndCampus';
 import { GradesOfYearPage } from './components/GradesOfYearPage';
 import { RegistrarAdminPage } from './components/RegistrarAdminPage';
@@ -21,11 +20,13 @@ import { Footer } from './components/Footer';
 import {
   SEED_STUDENTS,
   SCHOOL_EVENTS,
+  INITIAL_ANNOUNCEMENTS,
   INITIAL_MESSAGES,
   TEACHERS,
   INITIAL_GRADE_SECTIONS,
   Student,
   SchoolEvent,
+  SchoolAnnouncement,
   MessageThread,
   Teacher,
   GradeSection
@@ -101,7 +102,25 @@ export default function App() {
     return INITIAL_GRADE_SECTIONS;
   });
 
-  const [events] = useState<SchoolEvent[]>(SCHOOL_EVENTS);
+  const [events, setEvents] = useState<SchoolEvent[]>(() => {
+    try {
+      const saved = localStorage.getItem('hmm_persisted_events');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return SCHOOL_EVENTS;
+  });
+
+  const [announcements, setAnnouncements] = useState<SchoolAnnouncement[]>(() => {
+    try {
+      const saved = localStorage.getItem('hmm_persisted_announcements');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return INITIAL_ANNOUNCEMENTS;
+  });
   const [threads, setThreads] = useState<MessageThread[]>(INITIAL_MESSAGES);
 
   // Sync state changes to localStorage
@@ -128,6 +147,30 @@ export default function App() {
       // ignore
     }
   }, [sections]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hmm_persisted_events', JSON.stringify(events));
+    } catch {
+      // ignore
+    }
+  }, [events]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('hmm_persisted_announcements', JSON.stringify(announcements));
+    } catch {
+      // ignore
+    }
+  }, [announcements]);
+
+  const handleAddEvent = (event: SchoolEvent) => {
+    setEvents((prev) => [event, ...prev]);
+  };
+
+  const handleAddAnnouncement = (ann: SchoolAnnouncement) => {
+    setAnnouncements((prev) => [ann, ...prev]);
+  };
 
   // Check stored admin/teacher session or URL tab parameter on initial load
   useEffect(() => {
@@ -305,11 +348,15 @@ export default function App() {
               onAddTeacher={handleAddTeacher}
               onDeleteTeacher={handleDeleteTeacher}
               students={students}
+              sections={sections}
+              events={events}
+              onAddEvent={handleAddEvent}
+              announcements={announcements}
+              onAddAnnouncement={handleAddAnnouncement}
               lang={lang}
               adminUser={adminUser}
               onNavigateToGrades={() => setCurrentTab('grades')}
               onNavigateToRegistrar={() => setCurrentTab('registrar')}
-              onQuickTeacherLogin={handleSelectTeacher}
               onSignOut={handleSignOutAdmin}
             />
           ) : (
@@ -364,7 +411,12 @@ export default function App() {
         )}
 
         {currentTab === 'home' && (
-          <HeroBanner onNavigate={setCurrentTab} lang={lang} />
+          <HeroBanner
+            onNavigate={setCurrentTab}
+            lang={lang}
+            announcements={announcements}
+            events={events}
+          />
         )}
 
         {currentTab === 'portal' && (
@@ -382,10 +434,6 @@ export default function App() {
             userRole={teacherUser ? 'Teacher' : 'Admin'}
             lang={lang}
           />
-        )}
-
-        {currentTab === 'esslce' && (
-          <ESSLCEHub lang={lang} />
         )}
 
         {currentTab === 'about' && (

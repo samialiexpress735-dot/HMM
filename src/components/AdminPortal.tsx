@@ -26,13 +26,17 @@ import {
   Database,
   UploadCloud,
   AlertTriangle,
-  Trash2
+  Trash2,
+  Calendar,
+  Bell
 } from 'lucide-react';
-import { Teacher, Student } from '../data/schoolData';
+import { Teacher, Student, GradeSection, SchoolEvent, SchoolAnnouncement } from '../data/schoolData';
 import { UserAccount, generateStaffPassword, generateStudentPasscode } from '../utils/authUtils';
 import {
   syncTeacherToCloud,
-  updateAdminProfileInCloud
+  updateAdminProfileInCloud,
+  syncSubAdminToCloud,
+  fetchSubAdminsFromCloud
 } from '../lib/supabase';
 
 import { AdminUser } from './AdminSignupPage';
@@ -42,11 +46,15 @@ interface AdminPortalProps {
   onAddTeacher: (teacher: Teacher) => void;
   onDeleteTeacher?: (teacherId: string) => void;
   students: Student[];
+  sections?: GradeSection[];
+  events?: SchoolEvent[];
+  onAddEvent?: (event: SchoolEvent) => void;
+  announcements?: SchoolAnnouncement[];
+  onAddAnnouncement?: (announcement: SchoolAnnouncement) => void;
   lang: 'en' | 'am';
   adminUser?: AdminUser | null;
   onNavigateToGrades?: () => void;
   onNavigateToRegistrar?: () => void;
-  onQuickTeacherLogin?: (teacher: Teacher) => void;
   onSignOut?: () => void;
 }
 
@@ -55,19 +63,28 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   onAddTeacher,
   onDeleteTeacher,
   students,
+  sections = [],
+  events = [],
+  onAddEvent,
+  announcements = [],
+  onAddAnnouncement,
   lang,
   adminUser,
   onNavigateToGrades,
   onNavigateToRegistrar,
-  onQuickTeacherLogin,
   onSignOut
 }) => {
-  const [activeAdminTab, setActiveAdminTab] = useState<'staff' | 'credentials' | 'school'>('staff');
+  const [activeAdminTab, setActiveAdminTab] = useState<'staff' | 'credentials' | 'notices' | 'school'>('staff');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string>('');
 
+  // Available sections list (dynamic from sections data)
+  const availableSections = sections.length > 0
+    ? Array.from(new Set(sections.map((s) => s.section)))
+    : ['9-A', '9-B', '10-A', '11-Nat-A', '12-Nat-A'];
+
   // Selected section for student credential slips
-  const [selectedSection, setSelectedSection] = useState<string>('9A');
+  const [selectedSection, setSelectedSection] = useState<string>(availableSections[0] || '9-A');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // New Teacher Form State
@@ -82,8 +99,26 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
   const [subAdminName, setSubAdminName] = useState('');
   const [subAdminRoleTitle, setSubAdminRoleTitle] = useState('Registrar Officer (የሬጅስትራር ሃላፊ)');
   const [subAdminPhone, setSubAdminPhone] = useState('+251 92 ');
+  const [subAdminEmail, setSubAdminEmail] = useState('');
 
-  // Sub-admins list state - initialized empty as requested
+  // New Announcement Form State
+  const [annTitle, setAnnTitle] = useState('');
+  const [annTitleAmharic, setAnnTitleAmharic] = useState('');
+  const [annCategory, setAnnCategory] = useState<'Administrative' | 'Academic' | 'Parent Notice' | 'Examination' | 'General'>('Administrative');
+  const [annSummary, setAnnSummary] = useState('');
+  const [annIsUrgent, setAnnIsUrgent] = useState(false);
+
+  // New Calendar Event Form State
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventTitleAmharic, setEventTitleAmharic] = useState('');
+  const [eventDate, setEventDate] = useState('2024-11-15');
+  const [eventEthDate, setEventEthDate] = useState('ህዳር 6 ቀን 2017');
+  const [eventTime, setEventTime] = useState('8:30 AM');
+  const [eventLocation, setEventLocation] = useState('School Main Assembly Hall');
+  const [eventCategory, setEventCategory] = useState<'Exam' | 'Holiday' | 'Sports' | 'PTA' | 'Academic' | 'Club'>('Academic');
+  const [eventDesc, setEventDesc] = useState('');
+
+  // Sub-admins list state - initialized with stored or cloud data
   const [subAdmins, setSubAdmins] = useState<any[]>(() => {
     try {
       const s = localStorage.getItem('hmm_subadmins');
@@ -92,6 +127,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       return [];
     }
   });
+
+  // Load sub-admins from Supabase profiles on mount
+  React.useEffect(() => {
+    async function loadCloudSubAdmins() {
+      try {
+        const cloudSubs = await fetchSubAdminsFromCloud();
+        if (cloudSubs && cloudSubs.length > 0) {
+          setSubAdmins(cloudSubs);
+        }
+      } catch (err) {
+        console.warn('SubAdmin load error:', err);
+      }
+    }
+    loadCloudSubAdmins();
+  }, []);
 
   // Copy helper
   const handleCopy = (text: string, id: string) => {
@@ -137,26 +187,33 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setTimeout(() => setSuccessBanner(''), 4000);
   };
 
-  // Add Teacher Handler with instant background Supabase Cloud Sync
+  // Add Teacher Handler with real email requirement and instant background Supabase Cloud Sync
   const handleCreateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teacherName.trim()) return;
+    if (!teacherName.trim()) {
+      setSuccessBanner('Please enter the teacher full name.');
+      return;
+    }
+    if (!teacherEmail.trim()) {
+      setSuccessBanner('Please enter the teacher actual email address.');
+      return;
+    }
 
     const newId = `t-${Date.now()}`;
     const generatedPass = generateStaffPassword('Teacher', teacherName.split(' ')[0]);
 
     const newTeacher: Teacher = {
       id: newId,
-      name: teacherName,
-      nameAmharic: teacherNameAmharic || teacherName,
+      name: teacherName.trim(),
+      nameAmharic: teacherNameAmharic.trim() || teacherName.trim(),
       department: teacherDepartment,
       subject: teacherSubject,
       gradesTeaching: [9, 10, 11, 12],
       sectionsTeaching: ['To be assigned in Grades of This Year'],
-      email: teacherEmail || `${teacherName.toLowerCase().replace(/\s+/g, '.')}@hailemariammamo.edu.et`,
-      phone: teacherPhone,
+      email: teacherEmail.trim().toLowerCase(),
+      phone: teacherPhone.trim(),
       qualification: 'B.Ed. / B.Sc. (Ethiopian University)',
-      avatar: '', // Strict zero-stock-photo rule; monogram badge used
+      avatar: '',
       isOnline: true,
       officeHours: 'Mon & Thu: 2:00 PM - 4:00 PM'
     };
@@ -164,11 +221,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     // 1. Optimistic instant UI update
     onAddTeacher(newTeacher);
 
-    // 2. Silent background sync to database
+    // 2. Silent background sync to Supabase database
     syncTeacherToCloud(newTeacher);
 
     setSuccessBanner(
-      `✓ Teacher "${teacherName}" registered successfully! Temporary password: ${generatedPass}`
+      `✓ Teacher "${teacherName}" registered successfully with email ${teacherEmail}! Passcode: ${generatedPass}`
     );
     setTeacherName('');
     setTeacherNameAmharic('');
@@ -176,25 +233,99 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     setTimeout(() => setSuccessBanner(''), 8000);
   };
 
-  // Add Sub-Admin Handler
-  const handleCreateSubAdmin = (e: React.FormEvent) => {
+  // Add Sub-Admin Handler with real email requirement and cloud sync
+  const handleCreateSubAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!subAdminName.trim()) return;
+    if (!subAdminName.trim()) {
+      setSuccessBanner('Please enter the staff member name.');
+      return;
+    }
+    if (!subAdminEmail.trim()) {
+      setSuccessBanner('Please enter the sub-administrator actual email address.');
+      return;
+    }
 
     const newSub = {
       id: `sub-${Date.now()}`,
-      name: subAdminName,
+      name: subAdminName.trim(),
       role: subAdminRoleTitle,
       roleAmharic: 'ረዳት አስተዳዳሪ',
-      phone: subAdminPhone,
-      email: `${subAdminName.toLowerCase().replace(/\s+/g, '.')}@hailemariammamo.edu.et`,
-      passcode: `${subAdminName.toLowerCase().split(' ')[0]}2017!`,
+      phone: subAdminPhone.trim(),
+      email: subAdminEmail.trim().toLowerCase(),
+      passcode: `${subAdminName.trim().toLowerCase().split(' ')[0]}2017!`,
       status: 'Active'
     };
 
-    setSubAdmins([...subAdmins, newSub]);
-    setSuccessBanner(`Sub-Admin "${subAdminName}" registered with login passcode: ${newSub.passcode}`);
+    setSubAdmins((prev) => [...prev, newSub]);
+    try {
+      localStorage.setItem('hmm_subadmins', JSON.stringify([...subAdmins, newSub]));
+    } catch {
+      // ignore
+    }
+
+    // Direct background sync to Supabase profiles table
+    syncSubAdminToCloud(newSub);
+
+    setSuccessBanner(`✓ Sub-Admin "${subAdminName}" registered with email ${newSub.email}! Passcode: ${newSub.passcode}`);
     setSubAdminName('');
+    setSubAdminEmail('');
+    setTimeout(() => setSuccessBanner(''), 8000);
+  };
+
+  // Add Official Announcement Handler
+  const handleCreateAnnouncement = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!annTitle.trim() || !annSummary.trim()) return;
+
+    const newAnn: SchoolAnnouncement = {
+      id: `ann-${Date.now()}`,
+      title: annTitle.trim(),
+      titleAmharic: annTitleAmharic.trim() || undefined,
+      date: new Date().toISOString().split('T')[0],
+      datePosted: new Date().toISOString().split('T')[0],
+      category: annCategory,
+      postedBy: currentAdmin.fullName || 'School Director',
+      summary: annSummary.trim(),
+      isUrgent: annIsUrgent
+    };
+
+    if (onAddAnnouncement) {
+      onAddAnnouncement(newAnn);
+    }
+    setSuccessBanner(`✓ Announcement "${annTitle}" posted to school portal!`);
+    setAnnTitle('');
+    setAnnTitleAmharic('');
+    setAnnSummary('');
+    setAnnIsUrgent(false);
+    setTimeout(() => setSuccessBanner(''), 6000);
+  };
+
+  // Add Academic Calendar Event Handler
+  const handleCreateEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventTitle.trim()) return;
+
+    const newEv: SchoolEvent = {
+      id: `ev-${Date.now()}`,
+      title: eventTitle.trim(),
+      titleAmharic: eventTitleAmharic.trim() || eventTitle.trim(),
+      date: eventDate,
+      ethiopianDate: eventEthDate,
+      time: eventTime,
+      location: eventLocation,
+      category: eventCategory,
+      targetGrades: [9, 10, 11, 12],
+      description: eventDesc.trim() || 'Official school event scheduled by administration.',
+      descriptionAmharic: 'በት/ቤቱ አስተዳደር የተመዘገበ ኦፊሴላዊ የትምህርት ቤት ክንውን'
+    };
+
+    if (onAddEvent) {
+      onAddEvent(newEv);
+    }
+    setSuccessBanner(`✓ Calendar Event "${eventTitle}" added for ${eventEthDate}!`);
+    setEventTitle('');
+    setEventTitleAmharic('');
+    setEventDesc('');
     setTimeout(() => setSuccessBanner(''), 6000);
   };
 
@@ -239,7 +370,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     : 'School Director & User Provisioning Desk'}
                 </h2>
                 <p className="text-xs md:text-sm text-slate-500 mt-0.5">
-                  Register teachers, create sub-admins, and issue official login credential slips for Grade 9A students & parents
+                  Register faculty, create sub-administrators, post school notices, and issue student & parent access slips
                 </p>
               </div>
             </div>
@@ -326,13 +457,34 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             }`}
           >
             <Key className={`w-4 h-4 ${activeAdminTab === 'credentials' ? 'text-amber-400' : 'text-amber-500'}`} />
-            <span>{lang === 'am' ? 'የተማሪና ወላጅ መግቢያ ካርድ (9A)' : 'Student & Parent Login Slips (9A)'}</span>
+            <span>{lang === 'am' ? 'የተማሪና ወላጅ መግቢያ ካርድ' : 'Student & Parent Login Slips'}</span>
             <span
               className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                 activeAdminTab === 'credentials' ? 'bg-emerald-700 text-white' : 'bg-amber-100 text-amber-900'
               }`}
             >
               {sectionStudents.length} Active
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveAdminTab('notices')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              activeAdminTab === 'notices'
+                ? 'bg-emerald-800 text-white shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+            }`}
+          >
+            <span className="p-1 rounded bg-amber-100 text-amber-800">
+              <BookOpen className="w-3.5 h-3.5" />
+            </span>
+            <span>{lang === 'am' ? 'ማስታወቂያና ካላንደር' : 'Announcements & Calendar'}</span>
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeAdminTab === 'notices' ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-800'
+              }`}
+            >
+              {announcements.length + events.length}
             </span>
           </button>
 
@@ -356,7 +508,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               className="btn-animated px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-sm cursor-pointer"
             >
               <Printer className="w-4 h-4 text-amber-400" />
-              <span>Print Section 9A Credential Slips</span>
+              <span>Print Section {selectedSection} Credential Slips</span>
             </button>
           )}
 
@@ -475,6 +627,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </div>
                 </div>
 
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Teacher Real Email (የአስተማሪው እውነተኛ ኢሜይል):
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g., yonas.bekele@gmail.com"
+                    value={teacherEmail}
+                    onChange={(e) => setTeacherEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    Actual email of the educator (no custom school domain generated)
+                  </span>
+                </div>
+
                 <div className="p-3 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl flex items-start gap-2.5 text-xs text-emerald-950">
                   <span className="p-1 bg-emerald-200/70 text-emerald-900 rounded-lg font-bold text-[11px] mt-0.5">
                     💡
@@ -570,6 +739,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   />
                 </div>
 
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Staff Real Email Address (የሰራተኛው እውነተኛ ኢሜይል):
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g., betty.tadesse@gmail.com"
+                    value={subAdminEmail}
+                    onChange={(e) => setSubAdminEmail(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    Saved directly to Supabase profiles database table
+                  </span>
+                </div>
+
                 <div className="pt-2">
                   <button
                     type="submit"
@@ -655,16 +841,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                           >
                             {copiedId === t.id ? <Check className="w-3.5 h-3.5 text-[#2e1c14]" /> : <Copy className="w-3.5 h-3.5" />}
                           </button>
-                          {onQuickTeacherLogin && (
-                            <button
-                              onClick={() => onQuickTeacherLogin(t)}
-                              className="btn-animated px-2.5 py-1.5 bg-[#4a2e22] hover:bg-[#352016] text-[#f7d6a5] font-bold rounded-lg text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-                              title="Directly switch to Teacher Suite logged in as this educator"
-                            >
-                              <LogIn className="w-3 h-3 text-[#c68a4c]" />
-                              <span>Sign in</span>
-                            </button>
-                          )}
                           {onDeleteTeacher && (
                             <button
                               onClick={() => {
@@ -753,10 +929,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                     onChange={(e) => setSelectedSection(e.target.value)}
                     className="bg-slate-50 border border-slate-200 rounded-xl py-1.5 px-3 font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
                   >
-                    <option value="9A">Grade 9 - Section &quot;A&quot; (10 Students)</option>
-                    <option value="9B">Grade 9 - Section &quot;B&quot;</option>
-                    <option value="10A">Grade 10 - Section &quot;A&quot;</option>
-                    <option value="12A">Grade 12 - Natural Science A</option>
+                    {availableSections.map((sec) => (
+                      <option key={sec} value={sec}>
+                        Section &quot;{sec}&quot;
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -766,7 +943,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
             <div className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
               {filteredStudents.map((student, idx) => {
                 const studentPasscode = generateStudentPasscode(student.grade, student.section, idx + 1);
-                const parentPasscode = `PAR-9A-${String(idx + 1).padStart(2, '0')}`;
+                const parentPasscode = `PAR-${student.grade}${student.section}-${String(idx + 1).padStart(2, '0')}`;
 
                 return (
                   <div
@@ -826,6 +1003,325 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       )}
 
+      {/* TAB: NOTICES & ACADEMIC CALENDAR DESK (ADMIN POSTED) */}
+      {activeAdminTab === 'notices' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Post Announcement and Calendar Event Forms (6 cols) */}
+          <div className="lg:col-span-6 space-y-6">
+            {/* Form 1: Post Announcement */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-4">
+                <span className="p-2 bg-amber-100 text-amber-800 rounded-xl">
+                  <BookOpen className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm md:text-base">
+                    Post School Announcement (ማስታወቂያ ይለጥፉ)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Immediately appears on the portal home page for students, parents, and visitors
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleCreateAnnouncement} className="space-y-3 text-xs">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Announcement Title (English):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., First Semester Mid-Exam Registration Period"
+                    value={annTitle}
+                    onChange={(e) => setAnnTitle(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Announcement Title (አማርኛ):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., የአንደኛ መንፈቀ-ዓመት አጋማሽ ፈተና ምዝገባ ጊዜ"
+                    value={annTitleAmharic}
+                    onChange={(e) => setAnnTitleAmharic(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Category:</label>
+                    <select
+                      value={annCategory}
+                      onChange={(e) => setAnnCategory(e.target.value as any)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="Administrative">Administrative (አስተዳደራዊ)</option>
+                      <option value="Academic">Academic (ትምህርታዊ)</option>
+                      <option value="Parent Notice">Parent Notice (የወላጆች ማስታወቂያ)</option>
+                      <option value="Examination">Examination (ፈተና)</option>
+                      <option value="General">General (አጠቃላይ)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center pt-5">
+                    <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={annIsUrgent}
+                        onChange={(e) => setAnnIsUrgent(e.target.checked)}
+                        className="rounded text-rose-600 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                      />
+                      <span>Urgent Notice (አስቸኳይ)</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Announcement Summary & Instructions:
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    placeholder="Provide full details, required documents, or instructions for students/parents..."
+                    value={annSummary}
+                    onChange={(e) => setAnnSummary(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-animated w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  + Post Official Announcement
+                </button>
+              </form>
+            </div>
+
+            {/* Form 2: Add Calendar Event */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100 mb-4">
+                <span className="p-2 bg-emerald-100 text-emerald-800 rounded-xl">
+                  <Calendar className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm md:text-base">
+                    Schedule Calendar Event (የካላንደር ክንውን መዝግብ)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Add official school dates to the Academic Calendar
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleCreateEvent} className="space-y-3 text-xs">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Event Title (English):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., Parent-Teacher Association General Meeting"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">
+                    Event Title (አማርኛ):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., የወላጅና መምህራን ማህበር ጠቅላላ ስብሰባ"
+                    value={eventTitleAmharic}
+                    onChange={(e) => setEventTitleAmharic(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">
+                      Ethiopian Date (የኢትዮጵያ ቀን):
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., ጥቅምት 25 ቀን 2017"
+                      value={eventEthDate}
+                      onChange={(e) => setEventEthDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Category:</label>
+                    <select
+                      value={eventCategory}
+                      onChange={(e) => setEventCategory(e.target.value as any)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                    >
+                      <option value="Academic">Academic (ትምህርታዊ)</option>
+                      <option value="Exam">Exam (ፈተና)</option>
+                      <option value="PTA">PTA / Parent Meeting (የወላጆች ስብሰባ)</option>
+                      <option value="Holiday">Holiday (በዓል)</option>
+                      <option value="Sports">Sports & Culture (ስፖርት)</option>
+                      <option value="Club">Club (ክበባት)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Time:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., 8:30 AM"
+                      value={eventTime}
+                      onChange={(e) => setEventTime(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">Location / Venue:</label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Main Assembly Hall"
+                      value={eventLocation}
+                      onChange={(e) => setEventLocation(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Event Description:</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Brief description of the event agenda..."
+                    value={eventDesc}
+                    onChange={(e) => setEventDesc(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="btn-animated w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                >
+                  + Add to Academic Calendar
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Right Column: Live Feed of Announcements and Calendar (6 cols) */}
+          <div className="lg:col-span-6 space-y-6">
+            {/* Active Announcements */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 className="font-bold text-slate-900 text-sm md:text-base">
+                  Active School Announcements ({announcements.length})
+                </h3>
+                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  Admin Broadcast
+                </span>
+              </div>
+
+              {announcements.length === 0 ? (
+                <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                  No announcements posted yet. Use the form on the left to post notices.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {announcements.map((ann) => (
+                    <div
+                      key={ann.id}
+                      className={`p-4 rounded-2xl border transition-all text-xs ${
+                        ann.isUrgent
+                          ? 'bg-rose-50/60 border-rose-200'
+                          : 'bg-slate-50/70 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-black text-slate-900 text-sm">{ann.title}</span>
+                        {ann.isUrgent && (
+                          <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[10px]">
+                            URGENT
+                          </span>
+                        )}
+                      </div>
+                      {ann.titleAmharic && (
+                        <p className="text-[11px] text-slate-600 mb-1">{ann.titleAmharic}</p>
+                      )}
+                      <p className="text-slate-700 text-xs leading-relaxed">{ann.summary}</p>
+                      <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500">
+                        <span>Category: <strong>{ann.category}</strong></span>
+                        <span>Posted on: {ann.datePosted}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Scheduled Calendar Events */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                <h3 className="font-bold text-slate-900 text-sm md:text-base">
+                  Scheduled Calendar Events ({events.length})
+                </h3>
+                <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-full">
+                  Academic Timeline
+                </span>
+              </div>
+
+              {events.length === 0 ? (
+                <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
+                  No events added yet. Use the calendar form on the left to schedule dates.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {events.map((ev) => (
+                    <div
+                      key={ev.id}
+                      className="p-4 rounded-2xl bg-white border border-slate-200 hover:border-emerald-300 transition-all text-xs flex items-start justify-between gap-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold text-slate-900">{ev.title}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">
+                            {ev.category}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">{ev.description}</p>
+                        <div className="mt-2 text-[10px] text-emerald-800 font-mono">
+                          📍 {ev.location} • {ev.time}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="font-black text-slate-900 text-xs">{ev.ethiopianDate}</div>
+                        <div className="text-[10px] text-slate-400">{ev.date}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 3: SCHOOL PROFILE & MOE ACCREDITATION */}
       {activeAdminTab === 'school' && (
         <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
@@ -858,7 +1354,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       )}
 
-      {/* PRINT-ONLY SECTION 9A CREDENTIAL SLIPS */}
+      {/* PRINT-ONLY SECTION CREDENTIAL SLIPS */}
       <div className="hidden print:block p-4 bg-white text-black font-sans">
         <div className="text-center border-b-2 border-black pb-3 mb-6">
           <h2 className="text-lg font-bold uppercase">Hailemariam Mamo Secondary & Preparatory School</h2>
@@ -874,7 +1370,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
               <p><strong>Student ID:</strong> {st.studentId}</p>
               <p><strong>Student Portal PIN:</strong> {generateStudentPasscode(st.grade, st.section, i + 1)}</p>
               <p className="mt-2 text-[10px] text-slate-700"><strong>Parent Guardian:</strong> {st.guardianName} ({st.guardianPhone})</p>
-              <p className="text-[10px] text-slate-700"><strong>Parent Access Code:</strong> PAR-9A-{String(i + 1).padStart(2, '0')}</p>
+              <p className="text-[10px] text-slate-700"><strong>Parent Access Code:</strong> PAR-{st.grade}{st.section}-{String(i + 1).padStart(2, '0')}</p>
               <div className="mt-2 text-[9px] text-slate-500 border-t border-slate-300 pt-1">
                 Portal: https://hailemariammamo.et • Cut along dashed line to deliver to parent
               </div>

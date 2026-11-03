@@ -34,9 +34,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const demoAccounts = [
     { role: 'Admin' as const, name: 'Principal Berhanu Wolde', id: 'admin', pass: 'debberhan2017', label: 'School Director' },
-    { role: 'Teacher' as const, name: 'Ato Daniel Girma (Math 9A)', id: 'daniel.math', pass: 'math9a2017', label: 'Faculty / Grade 9A' },
-    { role: 'Student' as const, name: 'Abebe Bikila (Grade 9A)', id: 'HMM-2024-0901', pass: 'abebe2017', label: 'Grade 9A Student' },
-    { role: 'Parent' as const, name: 'Ato Bikila Desta (Parent)', id: '0911421100', pass: 'parent9a', label: 'Grade 9A Guardian' },
+    { role: 'Teacher' as const, name: 'Ato Daniel Girma', id: 'daniel.math', pass: 'math2017!', label: 'Subject Faculty' },
+    { role: 'Student' as const, name: 'Abebe Bikila', id: 'HMM-2024-0901', pass: 'abebe2017', label: 'Enrolled Student' },
+    { role: 'Parent' as const, name: 'Ato Bikila Desta', id: '0911421100', pass: 'parent2017', label: 'Student Guardian' },
   ];
 
   const handleDemoLogin = (role: 'Student' | 'Teacher' | 'Parent' | 'Admin', name: string) => {

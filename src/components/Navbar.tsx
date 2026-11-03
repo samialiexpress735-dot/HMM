@@ -77,12 +77,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       icon: Calendar
     },
     {
-      id: 'esslce',
-      labelEn: 'ESSLCE Prep',
-      labelAm: 'ብሔራዊ ፈተና',
-      icon: BookOpen
-    },
-    {
       id: 'about',
       labelEn: 'Campus & Legacy',
       labelAm: 'ስለ ት/ቤቱ',

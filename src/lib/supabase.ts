@@ -403,9 +403,10 @@ export async function authenticateAdminFromCloud(
 }
 
 export async function updateAdminProfileInCloud(admin: AdminUser): Promise<boolean> {
-  if (!supabase) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
   try {
-    const { error } = await supabase.from('profiles').upsert({
+    const { error } = await client.from('profiles').upsert({
       email: admin.email.toLowerCase(),
       full_name: admin.fullName,
       full_name_amharic: admin.fullNameAmharic || null,
@@ -420,14 +421,74 @@ export async function updateAdminProfileInCloud(admin: AdminUser): Promise<boole
   }
 }
 
+export interface SubAdminRecord {
+  id: string;
+  name: string;
+  role: string;
+  roleAmharic?: string;
+  phone: string;
+  email: string;
+  passcode: string;
+  status?: string;
+}
+
+export async function fetchSubAdminsFromCloud(): Promise<SubAdminRecord[]> {
+  const client = getSupabaseClient();
+  if (!client) return [];
+  try {
+    const { data, error } = await client
+      .from('profiles')
+      .select('*')
+      .neq('role', 'Admin');
+
+    if (error || !data) return [];
+
+    return data.map((p: any) => ({
+      id: p.id || `sub-${Date.now()}`,
+      name: p.full_name || p.email,
+      role: p.role_title || p.role || 'Staff Member',
+      roleAmharic: p.full_name_amharic || 'ረዳት አስተዳዳሪ',
+      phone: p.phone || '',
+      email: p.email || '',
+      passcode: p.password || `${(p.full_name || 'staff').toLowerCase().split(' ')[0]}2017!`,
+      status: 'Active'
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export async function syncSubAdminToCloud(subAdmin: SubAdminRecord): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const { error } = await client.from('profiles').upsert({
+      id: subAdmin.id,
+      email: subAdmin.email.toLowerCase().trim(),
+      full_name: subAdmin.name.trim(),
+      full_name_amharic: subAdmin.roleAmharic || null,
+      phone: subAdmin.phone.trim(),
+      role: 'SubAdmin',
+      role_title: subAdmin.role,
+      password: subAdmin.passcode,
+      updated_at: new Date().toISOString()
+    });
+    return !error;
+  } catch (err) {
+    console.warn('SubAdmin cloud sync error:', err);
+    return false;
+  }
+}
+
 // ==============================================================================
 // 3. GRADE SECTIONS CLOUD SYNC
 // ==============================================================================
 
 export async function fetchSectionsFromCloud(): Promise<GradeSection[]> {
-  if (!supabase) return [];
+  const client = getSupabaseClient();
+  if (!client) return [];
   try {
-    const { data, error } = await supabase.from('grade_sections').select('*');
+    const { data, error } = await client.from('grade_sections').select('*');
     if (error || !data) return [];
     return data.map((s: any): GradeSection => ({
       id: s.id,
@@ -463,9 +524,10 @@ export async function fetchSectionsFromCloud(): Promise<GradeSection[]> {
 }
 
 export async function syncSectionToCloud(section: GradeSection): Promise<boolean> {
-  if (!supabase) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
   try {
-    const { error } = await supabase.from('grade_sections').upsert({
+    const { error } = await client.from('grade_sections').upsert({
       id: section.id,
       grade: section.grade,
       section_code: section.section,
@@ -493,9 +555,10 @@ export async function syncSectionToCloud(section: GradeSection): Promise<boolean
 // ==============================================================================
 
 export async function fetchRegistrationsFromCloud(): Promise<RegisteredStudent2019[]> {
-  if (!supabase) return [];
+  const client = getSupabaseClient();
+  if (!client) return [];
   try {
-    const { data, error } = await supabase.from('registrations_2019').select('*');
+    const { data, error } = await client.from('registrations_2019').select('*');
     if (error || !data) return [];
     return data.map((r: any): RegisteredStudent2019 => ({
       id: r.id,
@@ -522,9 +585,10 @@ export async function fetchRegistrationsFromCloud(): Promise<RegisteredStudent20
 }
 
 export async function syncStudentToCloud(student: RegisteredStudent2019): Promise<boolean> {
-  if (!supabase) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
   try {
-    const { error } = await supabase.from('registrations_2019').upsert({
+    const { error } = await client.from('registrations_2019').upsert({
       id: student.id,
       student_id: student.studentId,
       full_name: student.fullName,
@@ -551,9 +615,10 @@ export async function syncStudentToCloud(student: RegisteredStudent2019): Promis
 }
 
 export async function syncTimetableSlotToCloud(slot: TimetableSlot): Promise<boolean> {
-  if (!supabase) return false;
+  const client = getSupabaseClient();
+  if (!client) return false;
   try {
-    const { error } = await supabase.from('timetable_slots').upsert({
+    const { error } = await client.from('timetable_slots').upsert({
       id: slot.id,
       day: slot.day,
       period: slot.period,

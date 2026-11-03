@@ -258,8 +258,8 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
             </div>
             <p className="text-xs md:text-sm text-slate-500 mt-1">
               {lang === 'am'
-                ? 'የ9ኛ "ሀ" ተማሪዎች ውጤት ማስገቢያ፣ አቴንዳንስ እና የክፍል ማርክ ሊስት ማውረጃ'
-                : 'Directly record continuous assessments, mid-term, final exams and daily attendance for Grade 9A'}
+                ? 'የተማሪዎች ውጤት ማስገቢያ፣ የቀን አቴንዳንስ እና የክፍል ማርክ ሊስት ማውረጃ'
+                : 'Directly record continuous assessments (30%), mid-exam (20%), final exam (50%) and daily attendance'}
             </p>
           </div>
 
@@ -331,7 +331,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
               onChange={(e) => setSelectedSection(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
-              <option value="9A">Grade 9 - Section &quot;A&quot; (10 Students Loaded)</option>
+              <option value="9A">Grade 9 - Section &quot;A&quot;</option>
               <option value="9B">Grade 9 - Section &quot;B&quot;</option>
               <option value="10A">Grade 10 - Section &quot;A&quot;</option>
               <option value="11A">Grade 11 - Natural Science A</option>
@@ -400,7 +400,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-              Section 9A Average
+              Section {selectedSection} Average
             </span>
             <div className="text-2xl md:text-3xl font-black text-slate-900 font-mono mt-1">
               {classAvg}%
@@ -420,7 +420,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
           <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-              Highest Score in 9A
+              Highest Score in {selectedSection}
             </span>
             <div className="text-2xl md:text-3xl font-black text-amber-600 font-mono mt-1">
               {highestMark}
@@ -444,7 +444,7 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
             <span className="text-[10px] font-bold uppercase text-slate-500 block">Attendance Rate</span>
             <div className="text-2xl font-black text-emerald-700 font-mono mt-1">{attendanceRate}%</div>
-            <span className="text-[10px] text-slate-400">Section 9A Today</span>
+            <span className="text-[10px] text-slate-400">Section {selectedSection} Today</span>
           </div>
           <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 text-emerald-950">
             <span className="text-[10px] font-bold uppercase block text-emerald-800">Present (P)</span>

@@ -91,17 +91,6 @@ export interface MessageThread {
   resolved?: boolean;
 }
 
-export interface ESSLCEQuestion {
-  id: string;
-  subject: 'Physics' | 'Mathematics' | 'Chemistry' | 'Biology' | 'English';
-  stream: 'Natural' | 'Social' | 'Common';
-  year: string;
-  question: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-}
-
 // -------------------------------------------------------------------------------------------------
 // GRADE SUBJECT TEMPLATES FOR ETHIOPIAN MOE CURRICULUM
 // -------------------------------------------------------------------------------------------------
@@ -141,112 +130,43 @@ export const SEED_STUDENTS: Student[] = [];
 export const STUDENTS: Student[] = [];
 export const TEACHERS: Teacher[] = [];
 
-export const SCHOOL_EVENTS: SchoolEvent[] = [
-  {
-    id: 'ev1',
-    title: 'Semester 1 Final Examination Week',
-    titleAmharic: 'የ1ኛው ወሰነ-ትምህርት የመጨረሻ ፈተና ሳምንት',
-    date: '2025-01-13',
-    ethiopianDate: 'ጥር 5 - ጥር 10, 2017',
-    time: '8:30 AM - 12:30 PM',
-    location: 'All Secondary Classrooms & Main Hall',
-    category: 'Exam',
-    targetGrades: [9, 10, 11, 12],
-    description: 'First semester comprehensive examinations for all subjects across Grades 9 to 12. Students must bring school ID and uniform.',
-    descriptionAmharic: 'ለሁሉም የ9ኛ - 12ኛ ክፍል ተማሪዎች የ1ኛው መንፈቀ-ትምህርት ማጠቃለያ ፈተና ይካሄዳል።',
-    isImportant: true
-  },
-  {
-    id: 'ev2',
-    title: 'Ethiopian Christmas (Genna) Break',
-    titleAmharic: 'የገና በዓል እረፍት',
-    date: '2025-01-07',
-    ethiopianDate: 'ታህሳስ 29, 2017',
-    time: 'All Day',
-    location: 'National Holiday',
-    category: 'Holiday',
-    targetGrades: [9, 10, 11, 12],
-    description: 'School closed for Genna holiday observance.',
-    descriptionAmharic: 'የትምህርት ቤቱ ማህበረሰብ የገናን በዓል ያከብራል።'
-  },
-  {
-    id: 'ev3',
-    title: 'PTA & Parents Academic Progress Conference',
-    titleAmharic: 'የወላጅ-መምህራን ህብረት (PTA) ጠቅላላ ጉባዔ',
-    date: '2025-03-22',
-    ethiopianDate: 'መጋቢት 13, 2017',
-    time: '9:00 AM - 12:30 PM',
-    location: 'Main Auditorium',
-    category: 'PTA',
-    targetGrades: [9, 10, 11, 12],
-    description: 'Parent-Teacher conference to distribute Semester report cards and review academic intervention programs.',
-    descriptionAmharic: 'የወሰነ ትምህርት የውጤት ካርድ ማሰራጫና የትምህርት አሰጣጥ ግምገማ ጉባዔ።',
-    isImportant: true
-  }
-];
+/**
+ * Calendar Events & Announcements are posted directly by the School Administrator.
+ * Preset MoE templates are removed as requested.
+ */
+export const SCHOOL_EVENTS: SchoolEvent[] = [];
 
 export const INITIAL_MESSAGES: MessageThread[] = [];
 
-export const SAMPLE_ESSLCE_QUESTIONS: ESSLCEQuestion[] = [
-  {
-    id: 'q1',
-    subject: 'Physics',
-    stream: 'Natural',
-    year: '2016 E.C. National',
-    question: 'A projectile is launched from ground level with initial velocity v₀ at angle θ above the horizontal. Neglecting air resistance, at what point in its trajectory is the speed of the projectile at its minimum?',
-    options: [
-      'Just after release from ground',
-      'At the maximum vertical height',
-      'Just before hitting the ground',
-      'The speed remains constant throughout'
-    ],
-    correctIndex: 1,
-    explanation: 'At maximum height, the vertical component of velocity vy = 0, leaving only the horizontal component vx = v₀·cos(θ). Hence speed is at its minimum.'
-  },
-  {
-    id: 'q2',
-    subject: 'Mathematics',
-    stream: 'Common',
-    year: '2016 E.C. National',
-    question: 'If log₂(x - 1) + log₂(x + 3) = 5, what is the valid real value of x in the domain?',
-    options: ['x = -7', 'x = 5', 'x = 7', 'x = 4'],
-    correctIndex: 1,
-    explanation: 'Using log rules: log₂((x - 1)(x + 3)) = 5 => (x - 1)(x + 3) = 32 => x² + 2x - 35 = 0 => (x + 7)(x - 5) = 0. Domain requires x > 1, so x = 5.'
-  },
-  {
-    id: 'q3',
-    subject: 'Chemistry',
-    stream: 'Natural',
-    year: '2015 E.C. National',
-    question: 'Which of the following compounds exhibits hydrogen bonding between its molecules in liquid state?',
-    options: ['CH₄ (Methane)', 'H₂S (Hydrogen sulfide)', 'NH₃ (Ammonia)', 'PH₃ (Phosphine)'],
-    correctIndex: 2,
-    explanation: 'Hydrogen bonding requires H covalently bonded to highly electronegative small atoms: N, O, or F. Ammonia (NH₃) fulfills this.'
-  }
-];
+export interface SchoolAnnouncement {
+  id: string;
+  title: string;
+  titleAmharic?: string;
+  date: string;
+  datePosted?: string;
+  category: string;
+  summary: string;
+  summaryAmharic?: string;
+  isImportant?: boolean;
+  postedBy?: string;
+  isUrgent?: boolean;
+}
 
-export const ESSLCE_QUESTIONS: ESSLCEQuestion[] = SAMPLE_ESSLCE_QUESTIONS;
-
-export const SCHOOL_ANNOUNCEMENTS = [
+export const INITIAL_ANNOUNCEMENTS: SchoolAnnouncement[] = [
   {
     id: 'ann-1',
-    title: 'Academic Year 2019 E.C. Student Admissions Portal Active',
-    titleAmharic: 'የ2019 ዓ.ም. አዲስ ተማሪዎች ምዝገባ ተጀመረ',
-    date: 'November 2024',
-    badge: 'Admissions',
-    badgeColor: 'amber',
-    summary: 'Registrar office is actively registering feeder school transfers and new applicants across Grades 9, 10, 11, and 12.'
-  },
-  {
-    id: 'ann-2',
-    title: 'Debre Berhan University (DBU) Pre-College Mentorship Announced',
-    titleAmharic: 'ከደብረ ብርሃን ዩኒቨርሲቲ ጋር የትምህርት አጋርነት ተመሰረተ',
-    date: 'October 2024',
-    badge: 'Academic',
-    badgeColor: 'amber',
-    summary: 'Grade 11 & 12 Natural Science students will have scheduled laboratory access to DBU advanced science laboratories.'
+    title: 'Welcome to Hailemariam Mamo Secondary & Preparatory School Portal',
+    titleAmharic: 'እንኳን ወደ ደብረ ብርሃን ኃይለማሪያም ማሞ አጠቃላይ ሁለተኛና መሰናዶ ት/ቤት በደህና መጡ',
+    date: '2024-09-01',
+    datePosted: '2024-09-01',
+    category: 'Administrative',
+    postedBy: 'Principal Office',
+    summary: 'Official digital system for students, parents, faculty mark records, and semester registration. Debre Berhan, Amhara Region.',
+    isUrgent: false
   }
 ];
+
+export const SCHOOL_ANNOUNCEMENTS: SchoolAnnouncement[] = INITIAL_ANNOUNCEMENTS;
 
 // -------------------------------------------------------------------------------------------------
 // GRADES OF THIS YEAR (2019 E.C.) - GRADE LEVELS & SECTIONS
