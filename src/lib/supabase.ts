@@ -9,8 +9,12 @@ import { GradeSection, Teacher, Student } from '../data/schoolData';
 import { AdminUser } from '../components/AdminSignupPage';
 
 export function getSupabaseCredentials(): { url: string; key: string } {
-  let url = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-  let key = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+  let url =
+    (import.meta as any).env?.VITE_SUPABASE_URL ||
+    'https://rtkjeokuhrrgyxfhvulo.supabase.co';
+  let key =
+    (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ||
+    'sb_publishable_uQ4U2pIq82NrKOJemlO_Hg_u8gKpNuA';
 
   try {
     const savedUrl = localStorage.getItem('hmm_supabase_url');
@@ -81,9 +85,9 @@ export const getSupabaseStatus = () => {
 // 1. TEACHERS CRUD & SYNC
 // ==============================================================================
 
-export async function fetchTeachersFromCloud(): Promise<Teacher[]> {
+export async function fetchTeachersFromCloud(): Promise<Teacher[] | null> {
   const client = getSupabaseClient();
-  if (!client) return [];
+  if (!client) return null;
   try {
     const { data, error } = await client
       .from('teachers')
@@ -92,13 +96,13 @@ export async function fetchTeachersFromCloud(): Promise<Teacher[]> {
 
     if (error) {
       console.warn('Error fetching teachers from Supabase:', error.message);
-      return [];
+      return null;
     }
 
     if (!data) return [];
 
     return data.map((t: any): Teacher => ({
-      id: t.id,
+      id: String(t.id),
       name: t.name,
       nameAmharic: t.name_amharic || '',
       department: t.department || 'Secondary Faculty',
@@ -114,7 +118,7 @@ export async function fetchTeachersFromCloud(): Promise<Teacher[]> {
     }));
   } catch (err) {
     console.warn('Supabase fetchTeachers exception:', err);
-    return [];
+    return null;
   }
 }
 
@@ -254,13 +258,47 @@ export async function syncAllTeachersToCloud(
   return { successCount, failCount, errors };
 }
 
-export async function deleteTeacherFromCloud(teacherId: string): Promise<boolean> {
-  if (!supabase) return false;
+export async function deleteTeacherFromCloud(teacherIdOrName: string): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
   try {
-    const { error } = await supabase.from('teachers').delete().eq('id', teacherId);
+    const { error } = await client
+      .from('teachers')
+      .delete()
+      .or(`id.eq.${teacherIdOrName},name.ilike.${teacherIdOrName}`);
     return !error;
   } catch (err) {
     return false;
+  }
+}
+
+/**
+ * Real-time background WebSocket subscription.
+ * Automatically synchronizes data whenever any record changes in Supabase,
+ * eliminating the need for any manual refresh buttons (like Uber / Amazon).
+ */
+export function subscribeToTeachersRealtime(onUpdate: () => void): () => void {
+  const client = getSupabaseClient();
+  if (!client) return () => {};
+
+  try {
+    const channel = client
+      .channel('realtime:teachers')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'teachers' },
+        () => {
+          onUpdate();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  } catch (err) {
+    console.warn('Realtime subscription error:', err);
+    return () => {};
   }
 }
 

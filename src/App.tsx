@@ -33,6 +33,8 @@ import {
 import {
   fetchTeachersFromCloud,
   syncTeacherToCloud,
+  deleteTeacherFromCloud,
+  subscribeToTeachersRealtime,
   fetchSectionsFromCloud,
   isSupabaseConfigured
 } from './lib/supabase';
@@ -150,12 +152,12 @@ export default function App() {
       setCurrentTab(tabParam);
     }
 
-    // Fetch live teachers & sections from Supabase PostgreSQL
+    // Automatic silent background load
     async function loadCloudData() {
       if (isSupabaseConfigured()) {
         try {
           const cloudTeachers = await fetchTeachersFromCloud();
-          if (cloudTeachers && cloudTeachers.length > 0) {
+          if (cloudTeachers !== null) {
             setTeachers(cloudTeachers);
           }
           const cloudSections = await fetchSectionsFromCloud();
@@ -163,11 +165,20 @@ export default function App() {
             setSections(cloudSections);
           }
         } catch (e) {
-          console.warn('Error fetching Supabase records:', e);
+          console.warn('Background sync error:', e);
         }
       }
     }
     loadCloudData();
+
+    // Realtime background sync - instant updates like Uber & Amazon without manual refresh
+    const unsubscribe = subscribeToTeachersRealtime(() => {
+      loadCloudData();
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const handleTogglePortalMode = () => {
@@ -242,6 +253,15 @@ export default function App() {
     setTeachers((prev) => [newTeacher, ...prev.filter((t) => t.id !== newTeacher.id)]);
   };
 
+  const handleDeleteTeacher = async (teacherId: string) => {
+    setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+    try {
+      await deleteTeacherFromCloud(teacherId);
+    } catch (e) {
+      console.warn('Failed to delete teacher from Supabase:', e);
+    }
+  };
+
   const handleUpdateSection = (updated: GradeSection) => {
     setSections((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   };
@@ -283,6 +303,7 @@ export default function App() {
             <AdminPortal
               teachers={teachers}
               onAddTeacher={handleAddTeacher}
+              onDeleteTeacher={handleDeleteTeacher}
               students={students}
               lang={lang}
               adminUser={adminUser}

@@ -153,17 +153,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, lang }) => {
         <div className="mt-12 pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-slate-500">
           <p>© {new Date().getFullYear()} Hailemariam Mamo Secondary & Preparatory School. All Rights Reserved.</p>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsCloudModalOpen(true)}
-              className="px-3 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center gap-1.5 text-[10px] cursor-pointer transition-colors"
-            >
-              <Cloud className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Vercel & Supabase Ready</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            </button>
+            <span className="px-3 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 flex items-center gap-1.5 text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>MoE Center DB-HMM-0912</span>
+            </span>
             <p className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Secure Student Data & Grades System • Debre Berhan</span>
+              <span>Secure Student Information System • Debre Berhan</span>
             </p>
           </div>
         </div>

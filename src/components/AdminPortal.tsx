@@ -25,18 +25,14 @@ import {
   Edit3,
   Database,
   UploadCloud,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { Teacher, Student } from '../data/schoolData';
 import { UserAccount, generateStaffPassword, generateStudentPasscode } from '../utils/authUtils';
 import {
   syncTeacherToCloud,
-  updateAdminProfileInCloud,
-  fetchTeachersFromCloud,
-  syncAllTeachersToCloud,
-  getSupabaseStatus,
-  setSupabaseCredentials,
-  getSupabaseCredentials
+  updateAdminProfileInCloud
 } from '../lib/supabase';
 
 import { AdminUser } from './AdminSignupPage';
@@ -44,6 +40,7 @@ import { AdminUser } from './AdminSignupPage';
 interface AdminPortalProps {
   teachers: Teacher[];
   onAddTeacher: (teacher: Teacher) => void;
+  onDeleteTeacher?: (teacherId: string) => void;
   students: Student[];
   lang: 'en' | 'am';
   adminUser?: AdminUser | null;
@@ -56,6 +53,7 @@ interface AdminPortalProps {
 export const AdminPortal: React.FC<AdminPortalProps> = ({
   teachers,
   onAddTeacher,
+  onDeleteTeacher,
   students,
   lang,
   adminUser,
@@ -135,26 +133,11 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
     }
     await updateAdminProfileInCloud(updated);
     setIsEditProfileOpen(false);
-    setSuccessBanner('Administrator profile updated & saved to Supabase database!');
-    setTimeout(() => setSuccessBanner(''), 5000);
+    setSuccessBanner('Administrator profile updated successfully!');
+    setTimeout(() => setSuccessBanner(''), 4000);
   };
 
-  // Unified School Supabase Configuration State
-  const [showSqlModal, setShowSqlModal] = useState(false);
-  const [showSupabaseSettings, setShowSupabaseSettings] = useState(false);
-  const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseCredentials());
-  const [supabaseStatus, setSupabaseStatus] = useState(getSupabaseStatus());
-
-  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSupabaseCredentials(supabaseConfig.url, supabaseConfig.key);
-    setSupabaseStatus(getSupabaseStatus());
-    setShowSupabaseSettings(false);
-    setSuccessBanner('✓ Supabase connection updated and saved!');
-    setTimeout(() => setSuccessBanner(''), 5000);
-  };
-
-  // Add Teacher Handler with real Supabase Cloud Sync
+  // Add Teacher Handler with instant background Supabase Cloud Sync
   const handleCreateTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teacherName.trim()) return;
@@ -178,24 +161,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
       officeHours: 'Mon & Thu: 2:00 PM - 4:00 PM'
     };
 
+    // 1. Optimistic instant UI update
     onAddTeacher(newTeacher);
 
-    // Save to Supabase Cloud Database table "teachers"
-    const savedToCloud = await syncTeacherToCloud(newTeacher);
+    // 2. Silent background sync to database
+    syncTeacherToCloud(newTeacher);
 
-    if (savedToCloud.success) {
-      setSuccessBanner(
-        `✓ Teacher "${teacherName}" registered and saved directly to your Supabase database! Temporary password: ${generatedPass}`
-      );
-    } else {
-      setSuccessBanner(
-        `✓ Teacher "${teacherName}" registered. Note: ${savedToCloud.error}`
-      );
-    }
+    setSuccessBanner(
+      `✓ Teacher "${teacherName}" registered successfully! Temporary password: ${generatedPass}`
+    );
     setTeacherName('');
     setTeacherNameAmharic('');
     setTeacherEmail('');
-    setTimeout(() => setSuccessBanner(''), 9000);
+    setTimeout(() => setSuccessBanner(''), 8000);
   };
 
   // Add Sub-Admin Handler
@@ -617,30 +595,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const live = await fetchTeachersFromCloud();
-                        if (live && live.length > 0) {
-                          live.forEach((t) => onAddTeacher(t));
-                          setSuccessBanner(`✓ Refreshed ${live.length} live teachers from your Supabase database!`);
-                          setTimeout(() => setSuccessBanner(''), 5000);
-                        } else {
-                          setSuccessBanner('Supabase database currently has 0 teachers stored.');
-                          setTimeout(() => setSuccessBanner(''), 4000);
-                        }
-                      } catch (e: any) {
-                        setSuccessBanner(`Error loading teachers: ${e.message}`);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#f3e8df] hover:bg-[#ebd3c4] text-[#6d3e23] border border-[#ebd3c4] transition-colors cursor-pointer"
-                    title="Refresh teachers directly from Supabase"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5 text-[#6d3e23]" />
-                    <span>Refresh from Database</span>
-                  </button>
-
                   <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full">
                     Debre Berhan Campus
                   </span>
@@ -709,6 +663,19 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                             >
                               <LogIn className="w-3 h-3 text-[#c68a4c]" />
                               <span>Sign in</span>
+                            </button>
+                          )}
+                          {onDeleteTeacher && (
+                            <button
+                              onClick={() => {
+                                onDeleteTeacher(t.id);
+                                setSuccessBanner(`Removed ${t.name} from faculty directory and database.`);
+                                setTimeout(() => setSuccessBanner(''), 3000);
+                              }}
+                              className="p-2 bg-rose-50 hover:bg-rose-100 rounded-lg text-rose-700 transition-colors cursor-pointer border border-rose-200"
+                              title={`Delete ${t.name} from faculty`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                             </button>
                           )}
                         </div>
@@ -977,9 +944,9 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#352016] hover:bg-[#20130d] text-white font-bold rounded-xl shadow-xs"
+                  className="px-4 py-2 bg-[#352016] hover:bg-[#20130d] text-white font-bold rounded-xl shadow-xs cursor-pointer"
                 >
-                  Save to Supabase
+                  Save Changes
                 </button>
               </div>
             </form>
@@ -987,281 +954,6 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({
         </div>
       )}
 
-      {/* 1-CLICK SQL FIX MODAL */}
-      {showSqlModal && (
-        <div className="fixed inset-0 z-50 bg-[#150c08]/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 border border-[#ebd3c4] shadow-2xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-[#ebd3c4] flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#ebd3c4] rounded-xl text-[#3b241a]">
-                  <Database className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-[#20130d] text-base">Supabase Database Setup & Permissions SQL</h3>
-                  <p className="text-[11px] text-[#786154]">Run this 1-minute query once in your Supabase SQL Editor</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSqlModal(false)}
-                className="w-8 h-8 rounded-full bg-[#f3e8df] text-[#6d3e23] hover:bg-[#ebd3c4] flex items-center justify-center font-bold text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 py-3 overflow-y-auto flex-1 text-xs">
-              <div className="p-3 bg-[#fbf9f6] rounded-xl border border-[#ebd3c4] text-[#352016] space-y-1">
-                <div className="font-bold text-[#20130d]">Quick 3-Step Guide:</div>
-                <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-[#5d3b2c]">
-                  <li>Open your Supabase Project dashboard (<code className="font-mono bg-white px-1 py-0.5 rounded border border-[#ebd3c4]">HMM</code>)</li>
-                  <li>Click <strong className="text-[#20130d]">SQL Editor</strong> in the left sidebar → <strong className="text-[#20130d]">+ New Query</strong></li>
-                  <li>Click the button below to copy the script, paste it into the editor, and click <strong className="text-[#20130d]">Run</strong></li>
-                </ol>
-              </div>
-
-              <div className="relative">
-                <pre className="p-3.5 bg-[#170d08] text-[#e8b982] rounded-xl text-[10.5px] font-mono leading-relaxed overflow-x-auto max-h-64 border border-[#3b241a]">
-{`-- 1. Ensure Teachers Table exists with correct primary key and columns
-CREATE TABLE IF NOT EXISTS teachers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  name_amharic TEXT,
-  department TEXT NOT NULL DEFAULT 'Secondary Faculty',
-  subject TEXT NOT NULL DEFAULT 'General',
-  email TEXT,
-  phone TEXT,
-  qualification TEXT DEFAULT 'B.Ed. (Ethiopian University)',
-  avatar TEXT DEFAULT '',
-  office_hours TEXT DEFAULT 'Mon & Thu: 2:00 PM - 4:00 PM',
-  is_online BOOLEAN DEFAULT false,
-  sections_teaching TEXT[] DEFAULT ARRAY[]::TEXT[],
-  grades_teaching INT[] DEFAULT ARRAY[9, 10, 11, 12]::INT[],
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. Add columns if table already existed
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS name_amharic TEXT;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'Secondary Faculty';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'General';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS email TEXT;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS phone TEXT;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS qualification TEXT DEFAULT 'B.Ed. (Ethiopian University)';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS office_hours TEXT DEFAULT 'Mon & Thu: 2:00 PM - 4:00 PM';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT false;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS sections_teaching TEXT[] DEFAULT ARRAY[]::TEXT[];
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS grades_teaching INT[] DEFAULT ARRAY[9, 10, 11, 12]::INT[];
-
--- 3. Convert id column to TEXT if it was created as BIGINT or UUID
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'teachers' AND column_name = 'id' AND data_type != 'text'
-  ) THEN
-    ALTER TABLE teachers ALTER COLUMN id TYPE TEXT USING id::text;
-  END IF;
-END $$;
-
--- 4. Grant table privileges
-GRANT ALL ON TABLE teachers TO anon, authenticated, service_role;
-
--- 5. Enable Row Level Security (RLS) & Write Policies
-ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Public read teachers" ON teachers;
-CREATE POLICY "Public read teachers" ON teachers FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Allow write teachers" ON teachers;
-CREATE POLICY "Allow write teachers" ON teachers FOR ALL USING (true);
-
-DROP POLICY IF EXISTS "Allow insert teachers" ON teachers;
-CREATE POLICY "Allow insert teachers" ON teachers FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow update teachers" ON teachers;
-CREATE POLICY "Allow update teachers" ON teachers FOR UPDATE USING (true) WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow delete teachers" ON teachers;
-CREATE POLICY "Allow delete teachers" ON teachers FOR DELETE USING (true);
-
--- 6. Profiles Table Fixes (password column & RLS)
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password TEXT;
-GRANT ALL ON TABLE profiles TO anon, authenticated, service_role;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow write profiles" ON profiles;
-CREATE POLICY "Allow write profiles" ON profiles FOR ALL USING (true);
-
--- 7. Reload Schema Cache
-NOTIFY pgrst, 'reload schema';`}
-                </pre>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-[#ebd3c4] flex items-center justify-between gap-3 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowSqlModal(false)}
-                className="px-4 py-2 rounded-xl text-[#786154] hover:bg-[#f3e8df] font-bold text-xs cursor-pointer"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const sqlContent = `-- Hailemariam Mamo Secondary & Prep School - Fix Permissions & Schema
-CREATE TABLE IF NOT EXISTS teachers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  name_amharic TEXT,
-  department TEXT NOT NULL DEFAULT 'Secondary Faculty',
-  subject TEXT NOT NULL DEFAULT 'General',
-  email TEXT,
-  phone TEXT,
-  qualification TEXT DEFAULT 'B.Ed. (Ethiopian University)',
-  avatar TEXT DEFAULT '',
-  office_hours TEXT DEFAULT 'Mon & Thu: 2:00 PM - 4:00 PM',
-  is_online BOOLEAN DEFAULT false,
-  sections_teaching TEXT[] DEFAULT ARRAY[]::TEXT[],
-  grades_teaching INT[] DEFAULT ARRAY[9, 10, 11, 12]::INT[],
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS name_amharic TEXT;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS department TEXT DEFAULT 'Secondary Faculty';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS subject TEXT DEFAULT 'General';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS email TEXT;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS phone TEXT;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS qualification TEXT DEFAULT 'B.Ed. (Ethiopian University)';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT '';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS office_hours TEXT DEFAULT 'Mon & Thu: 2:00 PM - 4:00 PM';
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT false;
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS sections_teaching TEXT[] DEFAULT ARRAY[]::TEXT[];
-ALTER TABLE teachers ADD COLUMN IF NOT EXISTS grades_teaching INT[] DEFAULT ARRAY[9, 10, 11, 12]::INT[];
-
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'teachers' AND column_name = 'id' AND data_type != 'text'
-  ) THEN
-    ALTER TABLE teachers ALTER COLUMN id TYPE TEXT USING id::text;
-  END IF;
-END $$;
-
-GRANT ALL ON TABLE teachers TO anon, authenticated, service_role;
-ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Public read teachers" ON teachers;
-CREATE POLICY "Public read teachers" ON teachers FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Allow write teachers" ON teachers;
-CREATE POLICY "Allow write teachers" ON teachers FOR ALL USING (true);
-DROP POLICY IF EXISTS "Allow insert teachers" ON teachers;
-CREATE POLICY "Allow insert teachers" ON teachers FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Allow update teachers" ON teachers;
-CREATE POLICY "Allow update teachers" ON teachers FOR UPDATE USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "Allow delete teachers" ON teachers;
-CREATE POLICY "Allow delete teachers" ON teachers FOR DELETE USING (true);
-
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS password TEXT;
-GRANT ALL ON TABLE profiles TO anon, authenticated, service_role;
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow write profiles" ON profiles;
-CREATE POLICY "Allow write profiles" ON profiles FOR ALL USING (true);
-
-NOTIFY pgrst, 'reload schema';`;
-                  navigator.clipboard.writeText(sqlContent);
-                  setSuccessBanner('✓ Complete SQL Fix Script copied to clipboard! Paste into Supabase SQL Editor.');
-                  setTimeout(() => setSuccessBanner(''), 6000);
-                  setShowSqlModal(false);
-                }}
-                className="px-5 py-2.5 bg-[#352016] hover:bg-[#20130d] text-[#f7d6a5] font-black rounded-xl text-xs flex items-center gap-2 shadow-sm cursor-pointer"
-              >
-                <Copy className="w-4 h-4 text-[#c68a4c]" />
-                <span>Copy Entire SQL Script to Clipboard</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUPABASE CONNECTION SETTINGS MODAL */}
-      {showSupabaseSettings && (
-        <div className="fixed inset-0 z-50 bg-[#150c08]/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 border border-[#ebd3c4] shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-[#ebd3c4] mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#ebd3c4] rounded-xl text-[#3b241a]">
-                  <Database className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-[#20130d] text-base">Supabase Credentials</h3>
-                  <p className="text-[11px] text-[#786154]">Connect your live PostgreSQL database</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSupabaseSettings(false)}
-                className="w-8 h-8 rounded-full bg-[#f3e8df] text-[#6d3e23] hover:bg-[#ebd3c4] flex items-center justify-center font-bold text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSupabaseConfig} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-[#20130d] mb-1">
-                  Supabase Project URL (VITE_SUPABASE_URL):
-                </label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://your-project-id.supabase.co"
-                  value={supabaseConfig.url}
-                  onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23] font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#20130d] mb-1">
-                  Supabase Anon Public API Key (VITE_SUPABASE_ANON_KEY):
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={supabaseConfig.key}
-                  onChange={(e) => setSupabaseConfig({ ...supabaseConfig, key: e.target.value })}
-                  className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23] font-mono"
-                />
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-[#faf5f1] border border-[#ebd3c4] text-[11px] text-[#5d3b2c] space-y-1">
-                <div className="font-bold text-[#20130d]">Where to find these in Supabase:</div>
-                <p>1. Open your project on supabase.com → Click <strong>Settings (Gear icon)</strong> → <strong>API</strong></p>
-                <p>2. Copy <strong>Project URL</strong> and <strong>Project API Keys (anon public)</strong></p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSupabaseSettings(false)}
-                  className="px-4 py-2 rounded-xl text-[#786154] hover:bg-[#f3e8df] font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-[#352016] hover:bg-[#20130d] text-[#f7d6a5] font-black rounded-xl shadow-xs"
-                >
-                  Save & Connect
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -20,13 +20,7 @@ import {
   Check,
   Settings
 } from 'lucide-react';
-import {
-  authenticateAdminFromCloud,
-  isSupabaseConfigured,
-  getSupabaseStatus,
-  setSupabaseCredentials,
-  getSupabaseCredentials
-} from '../lib/supabase';
+import { authenticateAdminFromCloud } from '../lib/supabase';
 
 export interface AdminUser {
   fullName: string;
@@ -60,15 +54,6 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
   // Login credentials fields
   const [loginIdentifier, setLoginIdentifier] = useState('admin');
   const [loginPassword, setLoginPassword] = useState('debberhan2017');
-
-  // Supabase Credentials Settings Modal / Accordion
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const currentCredentials = getSupabaseCredentials();
-  const [supabaseUrlInput, setSupabaseUrlInput] = useState(currentCredentials.url);
-  const [supabaseKeyInput, setSupabaseKeyInput] = useState(currentCredentials.key);
-  const [configSaved, setConfigSaved] = useState(false);
-
-  const supabaseStatus = getSupabaseStatus();
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,18 +114,6 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
     }
   };
 
-  const handleSaveSupabaseConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!supabaseUrlInput.trim() || !supabaseKeyInput.trim()) return;
-
-    setSupabaseCredentials(supabaseUrlInput.trim(), supabaseKeyInput.trim());
-    setConfigSaved(true);
-    setTimeout(() => {
-      setConfigSaved(false);
-      setShowConfigModal(false);
-    }, 1200);
-  };
-
   return (
     <div className="min-h-screen bg-[#f7f2ed] text-[#20130d] flex flex-col justify-between py-6 px-3 sm:px-6 w-full max-w-full overflow-x-hidden font-sans">
       {/* Top Ministry Ribbon */}
@@ -191,20 +164,10 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
               : 'School Director & Administration Sign In'}
           </p>
 
-          {/* Supabase Status Pill */}
+          {/* Institutional Badge */}
           <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-[#1a0f0a] border border-[#4a2e22] text-[#d4ab94]">
-            <Database className="w-3.5 h-3.5 text-[#c68a4c]" />
-            <span>
-              {supabaseStatus.isConfigured ? 'Supabase Database Connected' : 'Supabase Configurable'}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowConfigModal(true)}
-              className="text-[#e8b982] hover:underline ml-1 cursor-pointer font-bold"
-              title="Configure or inspect Supabase URL & Key"
-            >
-              [Settings]
-            </button>
+            <ShieldCheck className="w-3.5 h-3.5 text-[#c68a4c]" />
+            <span>Debre Berhan • Official Faculty & Admin Portal</span>
           </div>
         </div>
 
@@ -316,78 +279,7 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
         </div>
       </div>
 
-      {/* Supabase Connection Settings Modal */}
-      {showConfigModal && (
-        <div className="fixed inset-0 z-50 bg-[#150c08]/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-[#ebd3c4] shadow-2xl">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#ebd3c4]">
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-[#6d3e23]" />
-                <h3 className="font-extrabold text-[#20130d] text-base">Supabase Connection Settings</h3>
-              </div>
-              <button
-                onClick={() => setShowConfigModal(false)}
-                className="text-[#786154] hover:text-[#20130d] font-bold text-sm"
-              >
-                ✕
-              </button>
-            </div>
 
-            <p className="text-xs text-[#786154] mb-4 leading-relaxed">
-              If deploying on Vercel, set these in <strong>Project Settings &gt; Environment Variables</strong> as <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code>. You can also paste them directly below:
-            </p>
-
-            <form onSubmit={handleSaveSupabaseConfig} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-[#20130d] mb-1">Project URL (VITE_SUPABASE_URL):</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://xyzcompany.supabase.co"
-                  value={supabaseUrlInput}
-                  onChange={(e) => setSupabaseUrlInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#20130d] mb-1">Anon Public Key (VITE_SUPABASE_ANON_KEY):</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                  value={supabaseKeyInput}
-                  onChange={(e) => setSupabaseKeyInput(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs font-mono text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
-                />
-              </div>
-
-              {configSaved && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-800 font-bold flex items-center gap-1.5 text-xs">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span>Supabase credentials saved and initialized successfully!</span>
-                </div>
-              )}
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="px-4 py-2 rounded-xl text-[#786154] hover:bg-[#f3e8df] font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#352016] hover:bg-[#20130d] text-white font-bold rounded-xl shadow-xs"
-                >
-                  Save & Connect
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Footer attribution */}
       <div className="max-w-4xl mx-auto text-center mt-6 text-xs text-[#786154]">
