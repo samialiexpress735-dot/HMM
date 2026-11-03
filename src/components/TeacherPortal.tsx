@@ -303,22 +303,29 @@ export const TeacherPortal: React.FC<TeacherPortalProps> = ({
 
         {/* Teacher, Section & Subject Selector Controls */}
         <div className="pt-5 grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-center">
-          {/* Teacher Selector */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-              Active Instructor:
-            </label>
-            <select
-              value={selectedTeacherId}
-              onChange={(e) => setSelectedTeacherId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-            >
-              {teachers.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.subject})
-                </option>
-              ))}
-            </select>
+          {/* Authenticated Teacher Profile Badge */}
+          <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center font-black text-xs flex-shrink-0">
+                {activeTeacher.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+              </div>
+              <div className="min-w-0">
+                <div className="font-extrabold text-slate-900 text-xs truncate">
+                  {activeTeacher.name}
+                </div>
+                <div className="text-[10px] text-slate-500 truncate">
+                  {activeTeacher.subject} • {activeTeacher.email}
+                </div>
+              </div>
+            </div>
+            {onSignOutTeacher && (
+              <button
+                onClick={onSignOutTeacher}
+                className="text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded-lg border border-rose-200 cursor-pointer flex-shrink-0"
+              >
+                Sign Out
+              </button>
+            )}
           </div>
 
           {/* Section Selector */}

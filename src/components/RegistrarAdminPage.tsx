@@ -62,7 +62,6 @@ interface RegistrarAdminPageProps {
   onAddSections: (newSections: GradeSection[]) => void;
   lang: 'en' | 'am';
   onNavigateToGrades?: () => void;
-  onNavigateToTeacher?: (sectionCode?: string, subjectId?: string) => void;
 }
 
 export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
@@ -70,10 +69,11 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
   sections,
   onAddSections,
   lang,
-  onNavigateToGrades,
-  onNavigateToTeacher
+  onNavigateToGrades
 }) => {
   const [activeTab, setActiveTab] = useState<'registration' | 'allocation' | 'timetable'>('registration');
+  const [statusToast, setStatusToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const [selectedCohortView, setSelectedCohortView] = useState<'all' | 9 | 10 | 11 | 12>('all');
 
   // Archive & 2019 Registrations state
   const [archiveStudents] = useState<ArchiveStudent[]>(PREVIOUS_YEAR_ARCHIVE_STUDENTS);
@@ -188,17 +188,14 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
     setFullNameAmharic('');
     setSearchArchiveQuery('');
     setGuardianName('');
-    alert(
-      lang === 'am'
-        ? `ተማሪ ${newStudent.fullNameAmharic} ለ2019 ዓ.ም. በ${targetGrade}ኛ ክፍል ${
-            targetGrade >= 11
-              ? `(${targetStream === 'Natural Science' ? 'የተፈጥሮ ሳይንስ' : 'የማህበራዊ ሳይንስ'} - ${cteSpecialization})`
-              : ''
-          } በተሳካ ሁኔታ ተመዝግቧል!`
-        : `Student ${newStudent.fullName} successfully registered for 2019 E.C. Grade ${targetGrade}${
-            targetGrade >= 11 ? ` (${targetStream} - ${cteSpecialization})` : ''
-          }!`
-    );
+    setStatusToast({
+      type: 'success',
+      message:
+        lang === 'am'
+          ? `ተማሪ ${newStudent.fullNameAmharic} ለ${targetGrade}ኛ ክፍል ተመዝግቦ በቅበላ ቡድን (Admitted Cohort Pool) ውስጥ ተመድቧል! ወደ ክፍል ለመመደብ «ምደባ» የሚለውን ይጫኑ።`
+          : `Student ${newStudent.fullName} successfully admitted to Grade ${targetGrade} Cohort Group! You can allocate them to sections in Step 2.`
+    });
+    setTimeout(() => setStatusToast(null), 6000);
   };
 
   // Generate Section Allocation Preview
@@ -212,17 +209,20 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
     });
 
     if (candidates.length === 0) {
-      alert(
-        lang === 'am'
-          ? `ለ${allocationGrade}ኛ ክፍል ${
-              allocationGrade >= 11
-                ? `(${allocationStream === 'Natural Science' ? 'የተፈጥሮ ሳይንስ' : 'የማህበራዊ ሳይንስ'})`
-                : ''
-            } የተመዘገበ ተማሪ አልተገኘም! እባክዎ አስቀድመው ተማሪዎችን ይመዝግቡ።`
-          : `No registered students found for Grade ${allocationGrade}${
-              allocationGrade >= 11 ? ` (${allocationStream})` : ''
-            }! Please register students first.`
-      );
+      setStatusToast({
+        type: 'error',
+        message:
+          lang === 'am'
+            ? `ለ${allocationGrade}ኛ ክፍል ${
+                allocationGrade >= 11
+                  ? `(${allocationStream === 'Natural Science' ? 'የተፈጥሮ ሳይንስ' : 'የማህበራዊ ሳይንስ'})`
+                  : ''
+              } የተመዘገበ ተማሪ አልተገኘም! እባክዎ አስቀድመው ተማሪዎችን ይመዝግቡ።`
+            : `No registered students found for Grade ${allocationGrade}${
+                allocationGrade >= 11 ? ` (${allocationStream})` : ''
+              }! Please register students into the cohort first.`
+      });
+      setTimeout(() => setStatusToast(null), 5000);
       return;
     }
 
@@ -503,6 +503,30 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Floating Status Notification Toast */}
+      {statusToast && (
+        <div
+          className={`p-4 rounded-2xl border text-xs flex items-center justify-between gap-3 shadow-md animate-in fade-in duration-200 ${
+            statusToast.type === 'success'
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-bold'
+              : statusToast.type === 'error'
+              ? 'bg-rose-50 border-rose-300 text-rose-950 font-bold'
+              : 'bg-blue-50 border-blue-300 text-blue-950 font-bold'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-700" />
+            <span>{statusToast.message}</span>
+          </div>
+          <button
+            onClick={() => setStatusToast(null)}
+            className="text-xs px-2 py-1 rounded-lg bg-black/5 hover:bg-black/10 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* 2. REGISTRAR WORKSPACE NAVIGATION BAR */}
       <div className="bg-white rounded-2xl border border-slate-200 p-2 shadow-sm flex flex-wrap items-center justify-between gap-3">
@@ -930,97 +954,150 @@ export const RegistrarAdminPage: React.FC<RegistrarAdminPageProps> = ({
 
             {/* Right Panel: Registered 2019 Cohort List */}
             <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
                 <div>
                   <h3 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
                     <Users className="w-4 h-4 text-emerald-700" />
                     <span>
-                      {lang === 'am' ? 'የ2019 ዓ.ም. የተመዘገቡ ተማሪዎች' : 'Registered 2019 E.C. Applicants'}
+                      {lang === 'am' ? 'የ2019 ዓ.ም. የተመዘገቡ ተማሪዎች ቡድን' : '2019 E.C. Admitted Cohort Groups'}
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Grade {targetGrade} Admission Pool ({registeredStudents.filter((s) => s.targetGrade === targetGrade).length} students)
+                    {registeredStudents.length} {lang === 'am' ? 'ተማሪዎች ተመዝግበው ለክፍል ምደባ ዝግጁ ናቸው' : 'students admitted into cohort pool awaiting section placement'}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setActiveTab('allocation')}
-                  className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-[11px] rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1"
+                  className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-[11px] rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1 self-start sm:self-center"
                 >
                   <Shuffle className="w-3.5 h-3.5" />
                   <span>Allocate to Sections →</span>
                 </button>
               </div>
 
+              {/* Cohort Group Filter Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl text-xs">
+                {(['all', 9, 10, 11, 12] as const).map((gradeVal) => {
+                  const count =
+                    gradeVal === 'all'
+                      ? registeredStudents.length
+                      : registeredStudents.filter((s) => s.targetGrade === gradeVal).length;
+                  const isActive = selectedCohortView === gradeVal;
+                  return (
+                    <button
+                      key={gradeVal}
+                      type="button"
+                      onClick={() => setSelectedCohortView(gradeVal)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-emerald-800 text-white shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                    >
+                      <span>{gradeVal === 'all' ? 'All Cohorts' : `Grade ${gradeVal}`}</span>
+                      <span
+                        className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
+                          isActive ? 'bg-emerald-700 text-amber-300' : 'bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Admissions Guidance Box */}
+              <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-[11px] text-emerald-900 leading-relaxed flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5" />
+                <span>
+                  {lang === 'am'
+                    ? 'ማሳሰቢያ፡ ተማሪዎች ሲመዘገቡ ወዲያውኑ በቅበላ ቡድን (Admitted Pool) ውስጥ ይመደባሉ። በመቀጠል «2. በዘፈቀደ/በፆታ ክፍሎችን መመደቢያ» በመግባት ወደ ክፍል (A, B, C...) ይደለደላሉ።'
+                    : 'Admissions Workflow: Registered students are officially enrolled into their grade cohort group. To sort them into classroom sections (9A, 9B, etc.), proceed to Step 2 (Section Allocation).'}
+                </span>
+              </div>
+
               {/* Registered List */}
-              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-                {registeredStudents.filter((s) => s.targetGrade === targetGrade).length === 0 ? (
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                {registeredStudents.filter((s) => selectedCohortView === 'all' || s.targetGrade === selectedCohortView).length === 0 ? (
                   <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
                     <UserPlus className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-slate-700">No Grade {targetGrade} Students Enrolled Yet</p>
+                    <p className="text-xs font-bold text-slate-700">
+                      {selectedCohortView === 'all'
+                        ? 'No Students Enrolled Yet'
+                        : `No Grade ${selectedCohortView} Students in Cohort Pool`}
+                    </p>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Use the intake form on the left or select a 2018 E.C. candidate above to enroll the first applicant.
+                      Use the intake form on the left or select a 2018 E.C. candidate above to enroll an applicant into this cohort.
                     </p>
                   </div>
                 ) : (
-                  registeredStudents.filter((s) => s.targetGrade === targetGrade).map((st, idx) => {
-                    const initials = st.fullName.split(' ').map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'ST';
-                    return (
-                      <div
-                        key={st.id}
-                        className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs hover:bg-emerald-50/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#352016] to-[#6d3e23] text-[#e8b982] flex items-center justify-center font-black text-xs border border-[#c68a4c]/40 flex-shrink-0 shadow-2xs">
-                            {initials}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-extrabold text-slate-900 truncate">
-                              {idx + 1}. {st.fullName}
+                  registeredStudents
+                    .filter((s) => selectedCohortView === 'all' || s.targetGrade === selectedCohortView)
+                    .map((st, idx) => {
+                      const initials =
+                        st.fullName.split(' ').map((n) => n[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'ST';
+                      return (
+                        <div
+                          key={st.id}
+                          className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 text-xs hover:bg-emerald-50/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#352016] to-[#6d3e23] text-[#e8b982] flex items-center justify-center font-black text-xs border border-[#c68a4c]/40 flex-shrink-0 shadow-2xs">
+                              {initials}
                             </div>
-                            <div className="text-[10px] text-slate-500 truncate flex flex-wrap items-center gap-1.5 mt-0.5">
-                              <span className="font-mono">{st.studentId}</span>
-                              <span>•</span>
-                              <span>Score: {st.previousAverageScore}%</span>
-                          <span>•</span>
-                          <span>{st.gender === 'F' ? 'Female' : 'Male'}</span>
-                          {st.stream && (
-                            <>
-                              <span>•</span>
-                              <span
-                                className={`px-1.5 py-0.2 rounded font-extrabold text-[9.5px] ${
-                                  st.stream === 'Natural Science'
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : 'bg-amber-100 text-amber-800'
-                                }`}
-                              >
-                                {st.stream === 'Natural Science' ? '🧪 Natural' : '📜 Social'}
-                              </span>
-                            </>
-                          )}
-                          {st.cteSpecialization && (
-                            <span className="px-1.5 py-0.2 rounded font-medium text-[9.5px] bg-slate-200 text-slate-800">
-                              CTE: {st.cteSpecialization}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                            <div className="min-w-0">
+                              <div className="font-extrabold text-slate-900 truncate">
+                                {idx + 1}. {st.fullName}
+                              </div>
+                              <div className="text-[10px] text-slate-500 truncate flex flex-wrap items-center gap-1.5 mt-0.5">
+                                <span className="font-mono">{st.studentId}</span>
+                                <span>•</span>
+                                <span className="font-bold text-slate-700">Grade {st.targetGrade}</span>
+                                <span>•</span>
+                                <span>Score: {st.previousAverageScore}%</span>
+                                <span>•</span>
+                                <span>{st.gender === 'F' ? 'Female' : 'Male'}</span>
+                                {st.stream && (
+                                  <>
+                                    <span>•</span>
+                                    <span
+                                      className={`px-1.5 py-0.2 rounded font-extrabold text-[9.5px] ${
+                                        st.stream === 'Natural Science'
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : 'bg-amber-100 text-amber-800'
+                                      }`}
+                                    >
+                                      {st.stream === 'Natural Science' ? '🧪 Natural' : '📜 Social'}
+                                    </span>
+                                  </>
+                                )}
+                                {st.cteSpecialization && (
+                                  <span className="px-1.5 py-0.2 rounded font-medium text-[9.5px] bg-slate-200 text-slate-800">
+                                    CTE: {st.cteSpecialization}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
 
-                    <div className="flex-shrink-0 text-right">
-                      {st.allocatedSection ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          {st.allocatedSection}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                          Pending
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              }))}
+                          <div className="flex-shrink-0 text-right">
+                            {st.allocatedSection ? (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                Section {st.allocatedSection}
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span>Cohort Pool • Ready for Section</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
               </div>
             </div>
           </div>

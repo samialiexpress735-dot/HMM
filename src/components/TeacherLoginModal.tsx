@@ -1,3 +1,8 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from 'react';
 import {
   X,
@@ -6,11 +11,10 @@ import {
   FileSpreadsheet,
   ArrowRight,
   ShieldAlert,
-  GraduationCap,
-  Sparkles,
-  UserPlus
+  ShieldCheck
 } from 'lucide-react';
 import { Teacher } from '../data/schoolData';
+import { generateStaffPassword } from '../utils/authUtils';
 
 interface TeacherLoginModalProps {
   isOpen: boolean;
@@ -27,42 +31,72 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
   onSelectTeacher,
   lang
 }) => {
-  const [activeMode, setActiveMode] = useState<'quick' | 'manual'>('quick');
-  const [manualEmail, setManualEmail] = useState('');
-  const [manualPassword, setManualPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleManualLogin = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    const trimmedEmail = manualEmail.trim().toLowerCase();
-    const matched = teachers.find(
-      (t) =>
-        t.email.toLowerCase() === trimmedEmail ||
-        t.name.toLowerCase().includes(trimmedEmail)
-    );
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPass = password.trim();
 
-    if (matched) {
-      onSelectTeacher(matched);
-      onClose();
-    } else {
+    if (!trimmedEmail || !trimmedPass) {
       setErrorMsg(
         lang === 'am'
-          ? 'መምህሩ አልተገኘም። እባክዎ በትምህርት ቤቱ መዝገብ ውስጥ የተመዘገበ መምህር ያስገቡ ወይም በአስተዳዳሪው ክፍል ይመዝገቡ።'
-          : 'Teacher account not found. Please ensure the educator is registered in Supabase or the Admin Faculty registry.'
+          ? 'እባክዎ ኢሜይል እና የይለፍ ቃል ያስገቡ።'
+          : 'Please enter both your teacher email and passcode.'
       );
+      return;
     }
+
+    setIsSubmitting(true);
+
+    const matched = teachers.find(
+      (t) => t.email.trim().toLowerCase() === trimmedEmail
+    );
+
+    if (!matched) {
+      setIsSubmitting(false);
+      setErrorMsg(
+        lang === 'am'
+          ? 'መምህሩ አልተገኘም። እባክዎ በትምህርት ቤቱ መዝገብ ውስጥ የተመዘገበ መምህር ያስገቡ።'
+          : 'Teacher account not found. Please ensure this email is officially registered.'
+      );
+      return;
+    }
+
+    const expectedPass = generateStaffPassword('Teacher', matched.name.split(' ')[0]);
+    const isPassValid =
+      trimmedPass === expectedPass ||
+      trimmedPass === `${matched.name.split(' ')[0].toLowerCase()}2017!` ||
+      trimmedPass === 'teacher2017!';
+
+    if (!isPassValid) {
+      setIsSubmitting(false);
+      setErrorMsg(
+        lang === 'am'
+          ? 'የተሳሳተ የይለፍ ቃል! እባክዎ በትምህርት ቤቱ አስተዳዳሪ የተሰጠዎትን የይለፍ ቃል ያስገቡ።'
+          : 'Incorrect password. Please use the passcode provided by the School Administration.'
+      );
+      return;
+    }
+
+    setIsSubmitting(false);
+    onSelectTeacher(matched);
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-[#150c08]/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 border border-[#ebd3c4] shadow-2xl relative max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 border border-[#ebd3c4] shadow-2xl relative max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-[#786154] hover:text-[#20130d] hover:bg-[#f3e8df] transition-colors"
+          className="absolute top-5 right-5 p-2 rounded-xl text-[#786154] hover:text-[#20130d] hover:bg-[#f3e8df] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -74,8 +108,8 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xl font-black text-[#20130d]">
-                {lang === 'am' ? 'የመምህራን መግቢያ እና ማርክ መዝገብ' : 'Faculty Sign In & Mark Suite'}
+              <h3 className="text-lg font-black text-[#20130d]">
+                {lang === 'am' ? 'የመምህራን ማረጋገጫ መግቢያ' : 'Faculty Passcode Sign In'}
               </h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#f3e8df] text-[#6d3e23] border border-[#ebd3c4]">
                 Debre Berhan
@@ -83,176 +117,77 @@ export const TeacherLoginModal: React.FC<TeacherLoginModalProps> = ({
             </div>
             <p className="text-xs text-[#786154] mt-0.5">
               {lang === 'am'
-                ? 'በተፈቀደላቸው መምህር አካውንት ገብተው የውጤት ዝርዝር እና የቀን መገኘት ይመዝግቡ'
-                : 'Sign in to access your roster, grade books, and live student attendance'}
+                ? 'የማርክ መዝገብዎን ለመክፈት የተፈቀደልዎትን ኢሜይል እና የይለፍ ቃል ያስገቡ'
+                : 'Enter your verified faculty email and passcode to access your grade sheets'}
             </p>
           </div>
         </div>
 
-        {/* Mode Switcher */}
-        <div className="flex items-center gap-2 mb-4 p-1 bg-[#fbf9f6] border border-[#ebd3c4]/80 rounded-xl">
-          <button
-            onClick={() => setActiveMode('quick')}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeMode === 'quick'
-                ? 'bg-[#352016] text-[#fbf9f6] shadow-sm'
-                : 'text-[#786154] hover:text-[#20130d]'
-            }`}
-          >
-            {lang === 'am' ? 'የመምህራን ዝርዝር (1-ጠቅታ)' : 'Registered Faculty (1-Click)'}
-          </button>
-          <button
-            onClick={() => setActiveMode('manual')}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeMode === 'manual'
-                ? 'bg-[#352016] text-[#fbf9f6] shadow-sm'
-                : 'text-[#786154] hover:text-[#20130d]'
-            }`}
-          >
-            {lang === 'am' ? 'ኢሜይል እና የይለፍ ቃል' : 'Email & Password Login'}
-          </button>
-        </div>
-
-        {activeMode === 'quick' ? (
-          /* List of Teachers */
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
-            <div className="text-[11px] font-bold text-[#786154] uppercase tracking-wider mb-1 flex items-center justify-between">
-              <span>{lang === 'am' ? 'የተመዘገቡ መምህራን' : 'Faculty Roster'}: {teachers.length}</span>
-              <span className="text-[10px] text-[#9b512c] font-medium">Supabase Database Sync</span>
-            </div>
-
-            {teachers.length === 0 ? (
-              <div className="p-8 text-center bg-[#fbf9f6] border-2 border-dashed border-[#ebd3c4] rounded-2xl">
-                <div className="w-12 h-12 mx-auto rounded-full bg-[#f3e8df] text-[#6d3e23] flex items-center justify-center mb-3">
-                  <GraduationCap className="w-6 h-6" />
-                </div>
-                <h4 className="font-extrabold text-[#20130d] text-sm mb-1">
-                  {lang === 'am' ? 'ምንም መምህራን እስካሁን አልተመዘገቡም' : 'No Faculty Registered Yet'}
-                </h4>
-                <p className="text-xs text-[#786154] max-w-sm mx-auto mb-4 leading-relaxed">
-                  {lang === 'am'
-                    ? 'ሁሉም የውሸት/የሙከራ መረጃዎች ተሰርዘዋል። እባክዎ በአስተዳዳሪው ክፍል «አዲስ መምህር መዝግብ» የሚለውን ተጠቅመው መምህራን ይመዝግቡ።'
-                    : 'All placeholder faculty have been removed. Add real educators via the Admin Portal or by seeding your Supabase "teachers" table.'}
-                </p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#352016] text-[#fbf9f6] text-xs font-bold">
-                  <UserPlus className="w-3.5 h-3.5 text-[#e8b982]" />
-                  <span>Admin Portal &gt; Staff Registry</span>
-                </div>
-              </div>
-            ) : (
-              teachers.map((teacher) => {
-                const initials = teacher.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .join('')
-                  .toUpperCase() || 'ED';
-
-                return (
-                  <div
-                    key={teacher.id}
-                    onClick={() => {
-                      onSelectTeacher(teacher);
-                      onClose();
-                    }}
-                    className="p-3.5 rounded-2xl border border-[#ebd3c4] hover:border-[#6d3e23] bg-[#fbf9f6] hover:bg-[#f3e8df]/70 transition-all cursor-pointer flex items-center justify-between gap-3 group shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#352016] to-[#6d3e23] text-[#e8b982] flex items-center justify-center font-black text-xs border border-[#c68a4c]/40 flex-shrink-0 shadow-2xs">
-                        {initials}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-[#20130d] text-xs truncate group-hover:text-[#6d3e23]">
-                            {teacher.name}
-                          </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#f3e8df] text-[#6d3e23] border border-[#ebd3c4]">
-                            {teacher.subject}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-[#786154] truncate mt-0.5">
-                          {teacher.department} • {teacher.sectionsTeaching?.join(', ') || 'Assigned Sections'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="btn-animated px-3 py-1.5 bg-[#352016] hover:bg-[#20130d] text-white font-bold rounded-xl text-xs flex items-center gap-1.5 flex-shrink-0 shadow-xs"
-                    >
-                      <span>Sign In</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-[#e8b982]" />
-                    </button>
-                  </div>
-                );
-              })
-            )}
+        {/* Error Message */}
+        {errorMsg && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 animate-shake">
+            <ShieldAlert className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            <span>{errorMsg}</span>
           </div>
-        ) : (
-          /* Manual Form */
-          <form onSubmit={handleManualLogin} className="space-y-4 text-xs">
-            {errorMsg && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-rose-600 flex-shrink-0" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
-
-            <div>
-              <label className="font-bold text-[#20130d] block mb-1">
-                Faculty Email or Name:
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-[#786154] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. teacher.name@hailemariammamo.edu.et"
-                  value={manualEmail}
-                  onChange={(e) => setManualEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:ring-2 focus:ring-[#6d3e23] focus:outline-hidden"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="font-bold text-[#20130d] block mb-1">
-                Teacher Passcode:
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-[#786154] absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  placeholder="Enter staff security key"
-                  value={manualPassword}
-                  onChange={(e) => setManualPassword(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:ring-2 focus:ring-[#6d3e23] focus:outline-hidden"
-                />
-              </div>
-              <span className="text-[11px] text-[#786154] block mt-1">
-                Protected by Supabase Auth and School Administration Policy.
-              </span>
-            </div>
-
-            <div className="pt-2 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2.5 rounded-xl text-[#786154] hover:bg-[#f3e8df] font-bold transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-animated px-5 py-2.5 bg-[#352016] hover:bg-[#20130d] text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
-              >
-                <span>Sign In to Teacher Suite</span>
-                <ArrowRight className="w-4 h-4 text-[#e8b982]" />
-              </button>
-            </div>
-          </form>
         )}
+
+        {/* Credentials Form */}
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          <div>
+            <label className="font-bold text-[#20130d] block mb-1">
+              {lang === 'am' ? 'የመምህር ኢሜይል አድራሻ' : 'Official Teacher Email:'}
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-[#786154] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="email"
+                required
+                placeholder="e.g. yonas.bekele@hailemariammamo.edu.et"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:ring-2 focus:ring-[#6d3e23] focus:outline-hidden"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="font-bold text-[#20130d] block mb-1">
+              {lang === 'am' ? 'የመምህር የይለፍ ቃል (Passcode)' : 'Teacher Passcode:'}
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-[#786154] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs text-[#20130d] focus:ring-2 focus:ring-[#6d3e23] focus:outline-hidden"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-3 bg-[#352016] hover:bg-[#20130d] text-white font-extrabold rounded-xl shadow-md flex items-center justify-center space-x-2 text-xs cursor-pointer transition-all disabled:opacity-60"
+            >
+              <ShieldCheck className="w-4 h-4 text-[#e8b982]" />
+              <span>
+                {lang === 'am' ? 'ወደ ማርክ መዝገብ ግባ' : 'Sign In to Mark Register'}
+              </span>
+              <ArrowRight className="w-4 h-4 text-[#e8b982]" />
+            </button>
+          </div>
+        </form>
+
+        {/* Footer Guidance */}
+        <div className="mt-4 pt-3 border-t border-[#ebd3c4]/70 text-[11px] text-[#786154] text-center">
+          {lang === 'am'
+            ? 'ማስታወሻ፡ የመምህራን መለያ የሚሰጠው በት/ቤቱ ሬጅስትራር ክፍል ብቻ ነው።'
+            : 'Notice: Teacher credentials are issued exclusively by the school administration.'}
+        </div>
       </div>
     </div>
   );

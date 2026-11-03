@@ -35,9 +35,7 @@ interface GradesOfYearPageProps {
   students: Student[];
   onUpdateStudents?: (updated: Student[]) => void;
   lang: 'en' | 'am';
-  onNavigateToTeacherPortal?: (sectionCode?: string, subjectId?: string) => void;
   onNavigateToGradePortal?: () => void;
-  onQuickTeacherLogin?: (teacher: Teacher) => void;
 }
 
 export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
@@ -47,9 +45,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
   students,
   onUpdateStudents,
   lang,
-  onNavigateToTeacherPortal,
-  onNavigateToGradePortal,
-  onQuickTeacherLogin
+  onNavigateToGradePortal
 }) => {
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<number | 'all'>('all');
   const [selectedStreamFilter, setSelectedStreamFilter] = useState<string>('all');
@@ -545,20 +541,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                       </div>
                     </div>
 
-                    {/* Quick login as homeroom teacher */}
-                    {onQuickTeacherLogin && (
-                      <div className="mt-3 pt-2.5 border-t border-emerald-200/60 flex justify-end">
-                        <button
-                          onClick={() => {
-                            const found = teachers.find((t) => t.id === sec.homeroomTeacher.id);
-                            if (found) onQuickTeacherLogin(found);
-                          }}
-                          className="text-[11px] font-bold text-emerald-900 hover:text-emerald-950 flex items-center gap-1 hover:underline cursor-pointer"
-                        >
-                          <span>Sign in as {sec.homeroomTeacher.name.split(' ')[0]} →</span>
-                        </button>
-                      </div>
-                    )}
+
                   </div>
 
                   {/* Student Monitors (Monitor and Deputy Monitor ONLY - Academic Student removed) */}
@@ -672,17 +655,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                     <span>{lang === 'am' ? 'የተማሪዎች ዝርዝር እና ማርክ' : 'Open Section Students & Marks'}</span>
                   </button>
 
-                  {/* Section Teacher Suite Navigation */}
-                  {onNavigateToTeacherPortal && (
-                    <button
-                      onClick={() => onNavigateToTeacherPortal(sec.section, 'math')}
-                      className="btn-animated px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                    >
-                      <FileSpreadsheet className="w-4 h-4 text-amber-300" />
-                      <span>{lang === 'am' ? `የ${sec.section} ማርክ መዝገብ` : `Open ${sec.section} Marks`}</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  )}
+
                 </div>
               </div>
             </div>
@@ -872,18 +845,7 @@ export const GradesOfYearPage: React.FC<GradesOfYearPageProps> = ({
                 </div>
               </div>
 
-              {onNavigateToTeacherPortal && (
-                <button
-                  onClick={() => {
-                    setRosterModalSection(null);
-                    onNavigateToTeacherPortal(rosterModalSection.section, 'math');
-                  }}
-                  className="btn-animated px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-amber-300" />
-                  <span>{lang === 'am' ? `የ${rosterModalSection.section} ማርክ ሉህ ክፈት →` : `Open ${rosterModalSection.section} Sheet →`}</span>
-                </button>
-              )}
+
             </div>
 
             {/* Split View: Left Student Roster, Right Marks Card */}

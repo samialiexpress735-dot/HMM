@@ -52,8 +52,8 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Login credentials fields
-  const [loginIdentifier, setLoginIdentifier] = useState('admin');
-  const [loginPassword, setLoginPassword] = useState('debberhan2017');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,7 +199,7 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
                   required
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  placeholder="e.g. director@hailemariammamo.edu.et or admin"
+                  placeholder="e.g. director@hailemariammamo.edu.et"
                   className="w-full pl-9 pr-3 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
                 />
               </div>
@@ -216,7 +216,7 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Enter administrator passcode"
+                  placeholder="••••••••"
                   className="w-full pl-9 pr-9 py-2.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-xs sm:text-sm text-[#20130d] focus:outline-hidden focus:ring-2 focus:ring-[#6d3e23]"
                 />
                 <button
@@ -242,28 +242,13 @@ export const AdminSignupPage: React.FC<AdminSignupPageProps> = ({
                 )}
                 <span>
                   {isSubmitting
-                    ? (lang === 'am' ? 'ማረጋገጫ በመፈተሽ ላይ...' : 'Verifying with Supabase...')
+                    ? (lang === 'am' ? 'ማረጋገጫ በመፈተሽ ላይ...' : 'Verifying...')
                     : (lang === 'am' ? 'ወደ አስተዳዳሪ ዴስክ ግባ' : 'Sign In as Administrator')}
                 </span>
                 {!isSubmitting && <ArrowRight className="w-4 h-4 text-[#e8b982]" />}
               </button>
             </div>
           </form>
-
-          {/* Instructions for Manual User Creation in Supabase */}
-          <div className="mt-5 p-3.5 bg-[#fbf9f6] border border-[#ebd3c4] rounded-xl text-[11px] text-[#786154] space-y-1.5">
-            <div className="font-bold text-[#352016] flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5 text-[#c68a4c]" />
-              <span>{lang === 'am' ? 'አዲስ አስተዳዳሪ በሱፓቤዝ ለመመዝገብ' : 'How to Add Administrators in Supabase:'}</span>
-            </div>
-            <p className="leading-relaxed">
-              Open your <strong>Supabase Table Editor &gt; profiles</strong> and add a row with your admin’s <code>email</code>, <code>password</code>, <code>full_name</code>, and <code>role = &apos;Admin&apos;</code>. Once added, log in directly using that email and password.
-            </p>
-            <div className="pt-1 border-t border-[#ebd3c4]/60 flex items-center justify-between text-[10px]">
-              <span>Default Director account:</span>
-              <code className="text-[#352016] font-bold bg-[#f3e8df] px-1 py-0.5 rounded">admin / debberhan2017</code>
-            </div>
-          </div>
 
           {/* Public Preview Alternative */}
           <div className="mt-5 pt-4 border-t border-[#ebd3c4] text-center">

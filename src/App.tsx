@@ -15,6 +15,7 @@ import { AboutAndCampus } from './components/AboutAndCampus';
 import { GradesOfYearPage } from './components/GradesOfYearPage';
 import { RegistrarAdminPage } from './components/RegistrarAdminPage';
 import { AdminSignupPage, AdminUser } from './components/AdminSignupPage';
+import { TeacherLoginPage } from './components/TeacherLoginPage';
 import { TeacherLoginModal } from './components/TeacherLoginModal';
 import { Footer } from './components/Footer';
 import {
@@ -379,7 +380,6 @@ export default function App() {
             onAddSections={handleAddSections}
             lang={lang}
             onNavigateToGrades={() => setCurrentTab('grades')}
-            onNavigateToTeacher={handleNavigateToTeacherPortal}
           />
         )}
 
@@ -391,23 +391,30 @@ export default function App() {
             students={students}
             onUpdateStudents={setStudents}
             lang={lang}
-            onNavigateToTeacherPortal={handleNavigateToTeacherPortal}
             onNavigateToGradePortal={() => setCurrentTab('portal')}
-            onQuickTeacherLogin={handleSelectTeacher}
           />
         )}
 
         {currentTab === 'teacher' && (
-          <TeacherPortal
-            students={students}
-            onUpdateStudents={setStudents}
-            teachers={teachers}
-            lang={lang}
-            initialSection={activeTeacherSection}
-            initialSubjectId={activeTeacherSubject}
-            activeTeacherUser={teacherUser}
-            onSignOutTeacher={handleSignOutTeacher}
-          />
+          teacherUser ? (
+            <TeacherPortal
+              students={students}
+              onUpdateStudents={setStudents}
+              teachers={teachers}
+              lang={lang}
+              initialSection={activeTeacherSection}
+              initialSubjectId={activeTeacherSubject}
+              activeTeacherUser={teacherUser}
+              onSignOutTeacher={handleSignOutTeacher}
+            />
+          ) : (
+            <TeacherLoginPage
+              teachers={teachers}
+              onTeacherAuthenticated={handleSelectTeacher}
+              onBackToHome={() => setCurrentTab('home')}
+              lang={lang}
+            />
+          )
         )}
 
         {currentTab === 'home' && (
